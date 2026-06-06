@@ -1,5 +1,7 @@
 package com.justin.libradesk.domain.model;
 
+import com.justin.libradesk.domain.enumtype.MaterialType;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,8 +20,23 @@ public class Book {
     private Integer publishedYear;
     private LocalDateTime createdAt;
 
+    // Richer MARC-derived bibliographic fields (Phase 10). Populated by MARC
+    // import or, for some, the catalog form; null when unknown.
+    private String edition;
+    private String pubPlace;
+    private String extent;
+    private String series;
+    private String language;
+    private MaterialType materialType;
+    private String controlNumber;
+    private String summary;
+    private String marcXml;
+
     /** Author ids associated with this book (populated by the catalog service). */
     private final List<Long> authorIds = new ArrayList<>();
+
+    /** Subject ids associated with this book (MARC 6xx). */
+    private final List<Long> subjectIds = new ArrayList<>();
 
     public Book() {
     }
@@ -93,5 +110,81 @@ public class Book {
 
     public List<Long> getAuthorIds() {
         return authorIds;
+    }
+
+    public List<Long> getSubjectIds() {
+        return subjectIds;
+    }
+
+    public String getEdition() {
+        return edition;
+    }
+
+    public void setEdition(String edition) {
+        this.edition = edition;
+    }
+
+    public String getPubPlace() {
+        return pubPlace;
+    }
+
+    public void setPubPlace(String pubPlace) {
+        this.pubPlace = pubPlace;
+    }
+
+    public String getExtent() {
+        return extent;
+    }
+
+    public void setExtent(String extent) {
+        this.extent = extent;
+    }
+
+    public String getSeries() {
+        return series;
+    }
+
+    public void setSeries(String series) {
+        this.series = series;
+    }
+
+    public String getLanguage() {
+        return language;
+    }
+
+    public void setLanguage(String language) {
+        this.language = language;
+    }
+
+    public MaterialType getMaterialType() {
+        return materialType;
+    }
+
+    public void setMaterialType(MaterialType materialType) {
+        this.materialType = materialType;
+    }
+
+    public String getControlNumber() {
+        return controlNumber;
+    }
+
+    public void setControlNumber(String controlNumber) {
+        this.controlNumber = controlNumber;
+    }
+
+    public String getSummary() {
+        return summary;
+    }
+
+    public void setSummary(String summary) {
+        this.summary = summary;
+    }
+
+    public String getMarcXml() {
+        return marcXml;
+    }
+
+    public void setMarcXml(String marcXml) {
+        this.marcXml = marcXml;
     }
 }

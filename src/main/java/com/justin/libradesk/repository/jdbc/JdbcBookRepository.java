@@ -1,5 +1,6 @@
 package com.justin.libradesk.repository.jdbc;
 
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.repository.BookRepository;
@@ -25,8 +26,9 @@ public class JdbcBookRepository implements BookRepository {
     }
 
     /**
-     * Persists the book and its author links atomically: the book row and the
-     * {@code book_authors} junction are written inside a single transaction.
+     * Persists the book and its author/subject links atomically: the book row and
+     * the {@code book_authors}/{@code book_subjects} junctions are written in one
+     * transaction.
      */
     @Override
     public Book save(Book book) {
@@ -39,7 +41,8 @@ public class JdbcBookRepository implements BookRepository {
                 } else {
                     updateBook(c, book);
                 }
-                syncAuthors(c, book);
+                syncLinks(c, "book_authors", "author_id", book.getId(), book.getAuthorIds());
+                syncLinks(c, "book_subjects", "subject_id", book.getId(), book.getSubjectIds());
                 c.commit();
                 return book;
             } catch (SQLException e) {
@@ -55,16 +58,14 @@ public class JdbcBookRepository implements BookRepository {
 
     private void insertBook(Connection c, Book book) throws SQLException {
         String sql = """
-                INSERT INTO books (isbn, title, publisher_id, category_id, published_year, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO books (isbn, title, publisher_id, category_id, published_year,
+                                   edition, pub_place, extent, series, language, material_type,
+                                   control_number, summary, marc_xml, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            ps.setString(1, book.getIsbn());
-            ps.setString(2, book.getTitle());
-            setNullableLong(ps, 3, book.getPublisherId());
-            setNullableLong(ps, 4, book.getCategoryId());
-            setNullableInt(ps, 5, book.getPublishedYear());
-            ps.setTimestamp(6, Timestamp.valueOf(book.getCreatedAt()));
+            bindBook(ps, book);
+            ps.setTimestamp(15, Timestamp.valueOf(book.getCreatedAt()));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -77,34 +78,52 @@ public class JdbcBookRepository implements BookRepository {
     private void updateBook(Connection c, Book book) throws SQLException {
         String sql = """
                 UPDATE books
-                   SET isbn = ?, title = ?, publisher_id = ?, category_id = ?, published_year = ?
+                   SET isbn = ?, title = ?, publisher_id = ?, category_id = ?, published_year = ?,
+                       edition = ?, pub_place = ?, extent = ?, series = ?, language = ?,
+                       material_type = ?, control_number = ?, summary = ?, marc_xml = ?
                  WHERE id = ?
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql)) {
-            ps.setString(1, book.getIsbn());
-            ps.setString(2, book.getTitle());
-            setNullableLong(ps, 3, book.getPublisherId());
-            setNullableLong(ps, 4, book.getCategoryId());
-            setNullableInt(ps, 5, book.getPublishedYear());
-            ps.setLong(6, book.getId());
+            bindBook(ps, book);
+            ps.setLong(15, book.getId());
             ps.executeUpdate();
         }
     }
 
-    /** Replaces the book's author links with the current {@code authorIds}. */
-    private void syncAuthors(Connection c, Book book) throws SQLException {
-        try (PreparedStatement delete = c.prepareStatement("DELETE FROM book_authors WHERE book_id = ?")) {
-            delete.setLong(1, book.getId());
+    /** Binds the 14 shared book columns (1..14); callers set the trailing column (15). */
+    private void bindBook(PreparedStatement ps, Book book) throws SQLException {
+        ps.setString(1, book.getIsbn());
+        ps.setString(2, book.getTitle());
+        setNullableLong(ps, 3, book.getPublisherId());
+        setNullableLong(ps, 4, book.getCategoryId());
+        setNullableInt(ps, 5, book.getPublishedYear());
+        ps.setString(6, book.getEdition());
+        ps.setString(7, book.getPubPlace());
+        ps.setString(8, book.getExtent());
+        ps.setString(9, book.getSeries());
+        ps.setString(10, book.getLanguage());
+        ps.setString(11, book.getMaterialType() == null ? null : book.getMaterialType().name());
+        ps.setString(12, book.getControlNumber());
+        ps.setString(13, book.getSummary());
+        ps.setString(14, book.getMarcXml());
+    }
+
+    /** Replaces a book's link rows in a junction table with the given ids. */
+    private void syncLinks(Connection c, String table, String column, long bookId, List<Long> ids)
+            throws SQLException {
+        try (PreparedStatement delete = c.prepareStatement(
+                "DELETE FROM " + table + " WHERE book_id = ?")) {
+            delete.setLong(1, bookId);
             delete.executeUpdate();
         }
-        if (book.getAuthorIds().isEmpty()) {
+        if (ids.isEmpty()) {
             return;
         }
         try (PreparedStatement insert = c.prepareStatement(
-                "INSERT INTO book_authors (book_id, author_id) VALUES (?, ?)")) {
-            for (Long authorId : book.getAuthorIds()) {
-                insert.setLong(1, book.getId());
-                insert.setLong(2, authorId);
+                "INSERT INTO " + table + " (book_id, " + column + ") VALUES (?, ?)")) {
+            for (Long id : ids) {
+                insert.setLong(1, bookId);
+                insert.setLong(2, id);
                 insert.addBatch();
             }
             insert.executeBatch();
@@ -134,7 +153,7 @@ public class JdbcBookRepository implements BookRepository {
 
     @Override
     public void deleteById(Long id) {
-        // book_authors and book_copies cascade via ON DELETE CASCADE.
+        // book_authors, book_subjects and book_copies cascade via ON DELETE CASCADE.
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement("DELETE FROM books WHERE id = ?")) {
             ps.setLong(1, id);
@@ -153,7 +172,7 @@ public class JdbcBookRepository implements BookRepository {
                     return Optional.empty();
                 }
                 Book book = mapRow(rs);
-                book.getAuthorIds().addAll(loadAuthorIds(c, book.getId()));
+                loadLinks(c, book);
                 return Optional.of(book);
             }
         } catch (SQLException e) {
@@ -172,7 +191,7 @@ public class JdbcBookRepository implements BookRepository {
                 }
             }
             for (Book book : books) {
-                book.getAuthorIds().addAll(loadAuthorIds(c, book.getId()));
+                loadLinks(c, book);
             }
             return books;
         } catch (SQLException e) {
@@ -180,22 +199,27 @@ public class JdbcBookRepository implements BookRepository {
         }
     }
 
-    private List<Long> loadAuthorIds(Connection c, long bookId) throws SQLException {
-        List<Long> authorIds = new ArrayList<>();
+    private void loadLinks(Connection c, Book book) throws SQLException {
+        book.getAuthorIds().addAll(loadIds(c, "book_authors", "author_id", book.getId()));
+        book.getSubjectIds().addAll(loadIds(c, "book_subjects", "subject_id", book.getId()));
+    }
+
+    private List<Long> loadIds(Connection c, String table, String column, long bookId) throws SQLException {
+        List<Long> ids = new ArrayList<>();
         try (PreparedStatement ps = c.prepareStatement(
-                "SELECT author_id FROM book_authors WHERE book_id = ? ORDER BY author_id")) {
+                "SELECT " + column + " FROM " + table + " WHERE book_id = ? ORDER BY " + column)) {
             ps.setLong(1, bookId);
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    authorIds.add(rs.getLong("author_id"));
+                    ids.add(rs.getLong(column));
                 }
             }
         }
-        return authorIds;
+        return ids;
     }
 
     private Book mapRow(ResultSet rs) throws SQLException {
-        return new Book(
+        Book book = new Book(
                 rs.getLong("id"),
                 rs.getString("isbn"),
                 rs.getString("title"),
@@ -203,6 +227,17 @@ public class JdbcBookRepository implements BookRepository {
                 rs.getObject("category_id", Long.class),
                 rs.getObject("published_year", Integer.class),
                 rs.getTimestamp("created_at").toLocalDateTime());
+        book.setEdition(rs.getString("edition"));
+        book.setPubPlace(rs.getString("pub_place"));
+        book.setExtent(rs.getString("extent"));
+        book.setSeries(rs.getString("series"));
+        book.setLanguage(rs.getString("language"));
+        String materialType = rs.getString("material_type");
+        book.setMaterialType(materialType != null ? MaterialType.valueOf(materialType) : null);
+        book.setControlNumber(rs.getString("control_number"));
+        book.setSummary(rs.getString("summary"));
+        book.setMarcXml(rs.getString("marc_xml"));
+        return book;
     }
 
     private void setNullableLong(PreparedStatement ps, int index, Long value) throws SQLException {
