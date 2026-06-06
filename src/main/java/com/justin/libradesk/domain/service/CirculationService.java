@@ -7,6 +7,7 @@ import com.justin.libradesk.domain.enumtype.PatronType;
 import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Loan;
 import com.justin.libradesk.domain.model.Patron;
+import com.justin.libradesk.domain.model.Reservation;
 import com.justin.libradesk.dto.LoanResult;
 import com.justin.libradesk.dto.ReturnResult;
 import com.justin.libradesk.repository.BookCopyRepository;
@@ -18,6 +19,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
  * Coordinates the loan/return workflow. This is where the borrowing rules are
@@ -38,6 +40,7 @@ public class CirculationService {
     private final BookCopyRepository bookCopyRepository;
     private final LoanRepository loanRepository;
     private final AuditLogService auditLogService;
+    private final ReservationService reservationService;
     private final BorrowingPolicy borrowingPolicy;
     private final AppConfig config;
     private final Clock clock;
@@ -46,6 +49,7 @@ public class CirculationService {
                               BookCopyRepository bookCopyRepository,
                               LoanRepository loanRepository,
                               AuditLogService auditLogService,
+                              ReservationService reservationService,
                               BorrowingPolicy borrowingPolicy,
                               AppConfig config,
                               Clock clock) {
@@ -53,6 +57,7 @@ public class CirculationService {
         this.bookCopyRepository = bookCopyRepository;
         this.loanRepository = loanRepository;
         this.auditLogService = auditLogService;
+        this.reservationService = reservationService;
         this.borrowingPolicy = borrowingPolicy;
         this.config = config;
         this.clock = clock;
@@ -108,6 +113,7 @@ public class CirculationService {
      * @param copyId the physical copy being returned
      * @param actor  username of the staff member performing the check-in
      * @return a summary of the closed loan, including whether it was overdue
+     *         and whether the copy was held for a waiting reservation
      * @throws ValidationException if the copy is missing or has no active loan
      */
     public ReturnResult returnByCopy(Long copyId, String actor) {
@@ -123,14 +129,19 @@ public class CirculationService {
         loan.setStatus(LoanStatus.RETURNED);
         loanRepository.save(loan);
 
-        copy.setStatus(CopyStatus.AVAILABLE);
+        // If someone is waiting for this book, hold the copy for the next in line;
+        // otherwise it returns to the shelf.
+        Optional<Reservation> promoted = reservationService.promoteNext(copy.getBookId(), actor);
+        boolean heldForReservation = promoted.isPresent();
+        copy.setStatus(heldForReservation ? CopyStatus.RESERVED : CopyStatus.AVAILABLE);
         bookCopyRepository.save(copy);
 
         auditLogService.record(actor, "LOAN_RETURNED", "Loan", loan.getId(),
-                "copy=" + copyId + (wasOverdue ? " (overdue)" : ""));
-        log.info("Loan {} returned: copy={} overdue={}", loan.getId(), copyId, wasOverdue);
+                "copy=" + copyId + (wasOverdue ? " (overdue)" : "") + (heldForReservation ? " (held)" : ""));
+        log.info("Loan {} returned: copy={} overdue={} held={}", loan.getId(), copyId, wasOverdue,
+                heldForReservation);
 
-        return new ReturnResult(loan.getId(), copyId, now, wasOverdue);
+        return new ReturnResult(loan.getId(), copyId, now, wasOverdue, heldForReservation);
     }
 
     /** Resolves the configured borrowing limit for a patron type. */
@@ -139,6 +150,6 @@ public class CirculationService {
         return config.getInt(key);
     }
 
-    // TODO(phase2+): on return, promote the next reservation to READY; add an
-    // overdue-detection sweep over loanRepository.findOverdue().
+    // TODO(later): add a scheduled overdue-detection sweep over
+    // loanRepository.findOverdue() to flip ACTIVE loans to OVERDUE in bulk.
 }
