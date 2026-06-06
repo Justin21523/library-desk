@@ -1,5 +1,6 @@
 package com.justin.libradesk.controller;
 
+import com.justin.libradesk.LibraDeskApplication;
 import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.enumtype.Permission;
 import com.justin.libradesk.domain.model.User;
@@ -130,6 +131,12 @@ public class MainLayoutController {
     @FXML
     private void onSettings() {
         load("/fxml/SettingsView.fxml");
+    }
+
+    @FXML
+    private void onAbout() {
+        Dialogs.info("LibraDesk " + LibraDeskApplication.VERSION
+                + "\nLibrary Information Management System");
     }
 
     @FXML
