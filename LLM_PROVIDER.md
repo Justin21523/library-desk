@@ -79,23 +79,36 @@ Read these to understand the big picture quickly:
 - **Config access is `AppConfig`**, which lets any property be overridden by an
   `UPPER_SNAKE_CASE` environment variable (e.g. `db.password` → `DB_PASSWORD`).
   Keep secrets in the environment, not in `application.properties`.
+- **Runtime-editable settings go through `SettingsService`, not `AppConfig`.** It
+  is the single source of truth for the loan period and borrowing limits: a value
+  in the `settings` table (edited on the Settings screen) overrides the
+  `application.properties` default. `CirculationService` reads limits/period from
+  it. `AppConfig` only supplies the defaults.
+- **OVERDUE is still outstanding.** `markOverdueLoans()` flips ACTIVE→OVERDUE, but
+  the loan still counts against the patron's limit and can still be returned, so
+  `JdbcLoanRepository`'s "active" queries match `status IN ('ACTIVE','OVERDUE')`
+  while `findOverdue()` stays ACTIVE-only (idempotent sweep). The sweep runs on a
+  daemon thread via `infrastructure/scheduling/OverdueScheduler` (interval
+  `overdue.sweep.minutes`), started/stopped by `LibraDeskApplication`, and can be
+  triggered manually from the Reports screen.
+- **CSV** lives in `infrastructure/export/CsvService` (Apache Commons CSV). It only
+  maps between CSV and domain objects; the controllers loop over the parsed rows
+  and call the services, catching per-row `ValidationException`s to build an
+  import summary.
 
 ### Phase status (important when reading skeletons)
 
-Phase 3 is complete. **Fully implemented:** every JDBC repository; all services
-(`AuthService`, `PatronService`, `CatalogService` with book/copy create,
-`CirculationService.checkout`/`returnByCopy`, `ReservationService`,
-`DashboardService`, `AuditLogService`); and the feature views Dashboard, Catalog,
-Book Copies, Patrons, Circulation, Reservations. On return, a waiting reservation
-is promoted to READY and the copy is held as RESERVED (see
-`CirculationService.returnByCopy` + `ReservationService.promoteNext`).
-**Placeholders:** the Reports and Settings sidebar buttons. **Still deferred:** a
-scheduled overdue-detection sweep (`LoanRepository.findOverdue()` exists and is
-tested but nothing calls it on a timer), CSV import/export, author/publisher/
-category management UI (the columns exist and `JdbcBookRepository` syncs
-`book_authors`, but there is no screen for it yet). When extending, follow the
-implemented repositories/services and the existing feature controllers as the
-reference pattern.
+Phase 4 is complete. **Fully implemented:** every JDBC repository (incl.
+`JdbcSettingsRepository`); all services (`Auth`, `Patron`, `Catalog`,
+`Circulation` with `checkout`/`returnByCopy`/`markOverdueLoans`, `Reservation`,
+`Dashboard`, `Reports`, `Settings`, `AuditLog`); CSV via `CsvService`; the overdue
+`OverdueScheduler`; and all nine screens (Dashboard, Catalog, Book Copies,
+Patrons, Circulation, Reservations, Reports, Settings — the last two were the
+final placeholders). **Still deferred:** authentication hardening (passwords are
+SHA-256 in `util/PasswordHasher` — see its TODO), an author/publisher/category
+management UI (`book_authors` is synced by `JdbcBookRepository` but has no screen),
+and desktop packaging (jlink/jpackage). When extending, follow the implemented
+repositories/services and the existing feature controllers as the reference pattern.
 
 ## Language rules
 
