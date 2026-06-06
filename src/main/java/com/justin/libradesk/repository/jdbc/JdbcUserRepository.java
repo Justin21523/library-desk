@@ -31,8 +31,8 @@ public class JdbcUserRepository implements UserRepository {
 
     private User insert(User user) {
         String sql = """
-                INSERT INTO users (username, password_hash, full_name, role, active, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO users (username, password_hash, full_name, role, active, must_change_password, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -41,7 +41,8 @@ public class JdbcUserRepository implements UserRepository {
             ps.setString(3, user.getFullName());
             ps.setString(4, user.getRole().name());
             ps.setBoolean(5, user.isActive());
-            ps.setTimestamp(6, Timestamp.valueOf(user.getCreatedAt()));
+            ps.setBoolean(6, user.isMustChangePassword());
+            ps.setTimestamp(7, Timestamp.valueOf(user.getCreatedAt()));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -57,7 +58,8 @@ public class JdbcUserRepository implements UserRepository {
     private User update(User user) {
         String sql = """
                 UPDATE users
-                   SET username = ?, password_hash = ?, full_name = ?, role = ?, active = ?
+                   SET username = ?, password_hash = ?, full_name = ?, role = ?, active = ?,
+                       must_change_password = ?
                  WHERE id = ?
                 """;
         try (Connection c = db.getConnection();
@@ -67,7 +69,8 @@ public class JdbcUserRepository implements UserRepository {
             ps.setString(3, user.getFullName());
             ps.setString(4, user.getRole().name());
             ps.setBoolean(5, user.isActive());
-            ps.setLong(6, user.getId());
+            ps.setBoolean(6, user.isMustChangePassword());
+            ps.setLong(7, user.getId());
             ps.executeUpdate();
             return user;
         } catch (SQLException e) {
@@ -125,7 +128,7 @@ public class JdbcUserRepository implements UserRepository {
     }
 
     private User mapRow(ResultSet rs) throws SQLException {
-        return new User(
+        User user = new User(
                 rs.getLong("id"),
                 rs.getString("username"),
                 rs.getString("password_hash"),
@@ -133,6 +136,8 @@ public class JdbcUserRepository implements UserRepository {
                 UserRole.valueOf(rs.getString("role")),
                 rs.getBoolean("active"),
                 rs.getTimestamp("created_at").toLocalDateTime());
+        user.setMustChangePassword(rs.getBoolean("must_change_password"));
+        return user;
     }
 
     @FunctionalInterface

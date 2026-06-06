@@ -15,6 +15,7 @@ public class User {
     private String fullName;
     private UserRole role;
     private boolean active;
+    private boolean mustChangePassword;
     private LocalDateTime createdAt;
 
     public User() {
@@ -77,6 +78,14 @@ public class User {
 
     public void setActive(boolean active) {
         this.active = active;
+    }
+
+    public boolean isMustChangePassword() {
+        return mustChangePassword;
+    }
+
+    public void setMustChangePassword(boolean mustChangePassword) {
+        this.mustChangePassword = mustChangePassword;
     }
 
     public LocalDateTime getCreatedAt() {

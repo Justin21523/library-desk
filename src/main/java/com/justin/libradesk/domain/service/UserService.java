@@ -43,6 +43,7 @@ public class UserService {
         }
         requireStrong(newPassword);
         user.setPasswordHash(PasswordHasher.hash(newPassword));
+        user.setMustChangePassword(false);
         userRepository.save(user);
         auditLogService.record(actor, "PASSWORD_CHANGED", "User", userId, null);
     }
@@ -66,8 +67,19 @@ public class UserService {
         });
         User user = new User(null, username.trim(), PasswordHasher.hash(rawPassword), fullName,
                 role, true, LocalDateTime.now(clock));
+        user.setMustChangePassword(true); // new staff set their own password on first login
         User saved = userRepository.save(user);
         auditLogService.record(actor, "USER_CREATED", "User", saved.getId(), username + " (" + role + ")");
+        return saved;
+    }
+
+    /** Deactivates an account so it can no longer sign in. */
+    public User deactivate(Long userId, String actor) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ValidationException("User not found: " + userId));
+        user.setActive(false);
+        User saved = userRepository.save(user);
+        auditLogService.record(actor, "USER_DEACTIVATED", "User", userId, null);
         return saved;
     }
 

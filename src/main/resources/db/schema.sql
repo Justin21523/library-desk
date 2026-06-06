@@ -10,8 +10,12 @@ CREATE TABLE IF NOT EXISTS users (
     full_name     TEXT      NOT NULL,
     role          TEXT      NOT NULL,            -- ADMIN | LIBRARIAN | ASSISTANT
     active        BOOLEAN   NOT NULL DEFAULT TRUE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMP NOT NULL
 );
+
+-- Upgrade existing databases created before this column was added.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS publishers (
     id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

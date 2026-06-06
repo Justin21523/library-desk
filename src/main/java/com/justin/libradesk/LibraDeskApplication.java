@@ -81,8 +81,10 @@ public class LibraDeskApplication extends Application {
         }
         User admin = new User(null, "admin", PasswordHasher.hash("admin"), "Default Administrator",
                 UserRole.ADMIN, true, LocalDateTime.now());
+        admin.setMustChangePassword(true); // force a new password on first login
         users.save(admin);
-        log.warn("Seeded default admin account (username 'admin', password 'admin'). Change it immediately.");
+        log.warn("Seeded default admin account (username 'admin', password 'admin'). "
+                + "You will be required to change it on first login.");
     }
 
     private void showFatalError(Throwable error) {
