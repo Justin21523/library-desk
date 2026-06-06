@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justin.libradesk.controller.ReservationsController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Reservations" styleClass="app-title"/>
+
+    <HBox spacing="8">
+        <TextField fx:id="membershipField" promptText="Membership no."/>
+        <ComboBox fx:id="bookCombo" prefWidth="300"/>
+        <Button text="Reserve" onAction="#onReserve" styleClass="primary-button"/>
+        <Button text="Reload books" onAction="#onReloadBooks"/>
+    </HBox>
+
+    <TableView fx:id="reservationTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="bookColumn" text="Book" prefWidth="260"/>
+            <TableColumn fx:id="patronColumn" text="Patron id" prefWidth="100"/>
+            <TableColumn fx:id="positionColumn" text="Position" prefWidth="90"/>
+            <TableColumn fx:id="statusColumn" text="Status" prefWidth="100"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="8">
+        <Button text="Cancel selected" onAction="#onCancel"/>
+        <Button text="Refresh" onAction="#onRefresh"/>
+    </HBox>
+</VBox>

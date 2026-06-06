@@ -3,18 +3,25 @@ package com.justin.libradesk.controller;
 import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.model.User;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
 import javafx.scene.control.Label;
+import javafx.scene.layout.StackPane;
+
+import java.io.IOException;
+import java.io.UncheckedIOException;
 
 /**
- * Hosts the main application shell after login. Phase 1 only shows placeholder
- * content per section; the individual feature views are added in later phases.
+ * Hosts the application shell after login. Each sidebar button swaps a feature
+ * view into the central content area. Controllers for those views pull their
+ * services from {@link AppContext}, so this class only handles navigation.
  */
 public class MainLayoutController {
 
     @FXML
     private Label userLabel;
     @FXML
-    private Label contentLabel;
+    private StackPane contentArea;
 
     @FXML
     private void initialize() {
@@ -22,46 +29,47 @@ public class MainLayoutController {
         if (user != null) {
             userLabel.setText(user.getFullName() + " (" + user.getRole() + ")");
         }
+        onDashboard();
     }
 
     @FXML
     private void onDashboard() {
-        show("Dashboard");
+        load("/fxml/DashboardView.fxml");
     }
 
     @FXML
     private void onCatalog() {
-        show("Catalog management");
+        load("/fxml/CatalogView.fxml");
     }
 
     @FXML
     private void onCopies() {
-        show("Book copy management");
+        load("/fxml/CopiesView.fxml");
     }
 
     @FXML
     private void onPatrons() {
-        show("Patron management");
+        load("/fxml/PatronsView.fxml");
     }
 
     @FXML
     private void onCirculation() {
-        show("Circulation");
+        load("/fxml/CirculationView.fxml");
     }
 
     @FXML
     private void onReservations() {
-        show("Reservations");
+        load("/fxml/ReservationsView.fxml");
     }
 
     @FXML
     private void onReports() {
-        show("Reports");
+        placeholder("Reports");
     }
 
     @FXML
     private void onSettings() {
-        show("Settings");
+        placeholder("Settings");
     }
 
     @FXML
@@ -70,8 +78,17 @@ public class MainLayoutController {
         ViewNavigator.get().showLogin();
     }
 
-    private void show(String section) {
-        // TODO(phase2): load the section's own FXML view into the content area.
-        contentLabel.setText(section + " — coming soon");
+    private void load(String fxmlResource) {
+        try {
+            Parent view = new FXMLLoader(getClass().getResource(fxmlResource)).load();
+            contentArea.getChildren().setAll(view);
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to load view: " + fxmlResource, e);
+        }
+    }
+
+    private void placeholder(String section) {
+        // Reports and Settings are delivered in a later phase.
+        contentArea.getChildren().setAll(new Label(section + " — coming soon"));
     }
 }

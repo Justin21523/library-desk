@@ -18,6 +18,12 @@
     -fx-text-fill: #1f2d3d;
 }
 
+.section-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #2c3e50;
+}
+
 .error-label {
     -fx-text-fill: #c0392b;
 }

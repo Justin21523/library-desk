@@ -25,8 +25,6 @@
         </VBox>
     </left>
     <center>
-        <StackPane fx:id="contentArea">
-            <Label fx:id="contentLabel" text="Welcome to LibraDesk"/>
-        </StackPane>
+        <StackPane fx:id="contentArea"/>
     </center>
 </BorderPane>

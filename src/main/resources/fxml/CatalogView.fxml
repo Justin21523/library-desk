@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justin.libradesk.controller.CatalogController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Catalog" styleClass="app-title"/>
+
+    <HBox spacing="8">
+        <TextField fx:id="searchField" promptText="Search title..."/>
+        <Button text="Search" onAction="#onSearch"/>
+        <Button text="Show all" onAction="#onShowAll"/>
+    </HBox>
+
+    <HBox spacing="8">
+        <TextField fx:id="titleField" promptText="Title"/>
+        <TextField fx:id="isbnField" promptText="ISBN"/>
+        <TextField fx:id="yearField" promptText="Year"/>
+        <Button text="Add book" onAction="#onAddBook" styleClass="primary-button"/>
+    </HBox>
+
+    <TableView fx:id="bookTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="titleColumn" text="Title" prefWidth="260"/>
+            <TableColumn fx:id="isbnColumn" text="ISBN" prefWidth="140"/>
+            <TableColumn fx:id="yearColumn" text="Year" prefWidth="80"/>
+        </columns>
+    </TableView>
+</VBox>
