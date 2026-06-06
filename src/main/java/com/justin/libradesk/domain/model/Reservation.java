@@ -14,6 +14,7 @@ public class Reservation {
     private Long bookId;
     private Long patronId;
     private LocalDateTime reservedAt;
+    private LocalDateTime readyAt;
     private int queuePosition;
     private ReservationStatus status;
 
@@ -60,6 +61,14 @@ public class Reservation {
 
     public void setReservedAt(LocalDateTime reservedAt) {
         this.reservedAt = reservedAt;
+    }
+
+    public LocalDateTime getReadyAt() {
+        return readyAt;
+    }
+
+    public void setReadyAt(LocalDateTime readyAt) {
+        this.readyAt = readyAt;
     }
 
     public int getQueuePosition() {

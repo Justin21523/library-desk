@@ -12,6 +12,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
+import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,16 +33,17 @@ public class JdbcReservationRepository implements ReservationRepository {
 
     private Reservation insert(Reservation reservation) {
         String sql = """
-                INSERT INTO reservations (book_id, patron_id, reserved_at, queue_position, status)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO reservations (book_id, patron_id, reserved_at, ready_at, queue_position, status)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, reservation.getBookId());
             ps.setLong(2, reservation.getPatronId());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservedAt()));
-            ps.setInt(4, reservation.getQueuePosition());
-            ps.setString(5, reservation.getStatus().name());
+            setNullableTimestamp(ps, 4, reservation.getReadyAt());
+            ps.setInt(5, reservation.getQueuePosition());
+            ps.setString(6, reservation.getStatus().name());
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -56,7 +59,8 @@ public class JdbcReservationRepository implements ReservationRepository {
     private Reservation update(Reservation reservation) {
         String sql = """
                 UPDATE reservations
-                   SET book_id = ?, patron_id = ?, reserved_at = ?, queue_position = ?, status = ?
+                   SET book_id = ?, patron_id = ?, reserved_at = ?, ready_at = ?,
+                       queue_position = ?, status = ?
                  WHERE id = ?
                 """;
         try (Connection c = db.getConnection();
@@ -64,9 +68,10 @@ public class JdbcReservationRepository implements ReservationRepository {
             ps.setLong(1, reservation.getBookId());
             ps.setLong(2, reservation.getPatronId());
             ps.setTimestamp(3, Timestamp.valueOf(reservation.getReservedAt()));
-            ps.setInt(4, reservation.getQueuePosition());
-            ps.setString(5, reservation.getStatus().name());
-            ps.setLong(6, reservation.getId());
+            setNullableTimestamp(ps, 4, reservation.getReadyAt());
+            ps.setInt(5, reservation.getQueuePosition());
+            ps.setString(6, reservation.getStatus().name());
+            ps.setLong(7, reservation.getId());
             ps.executeUpdate();
             return reservation;
         } catch (SQLException e) {
@@ -111,6 +116,13 @@ public class JdbcReservationRepository implements ReservationRepository {
                 "SELECT * FROM reservations WHERE status IN ('PENDING', 'READY') "
                         + "ORDER BY book_id, queue_position",
                 ps -> { });
+    }
+
+    @Override
+    public List<Reservation> findReadyExpired(LocalDateTime cutoff) {
+        return queryList(
+                "SELECT * FROM reservations WHERE status = 'READY' AND ready_at < ? ORDER BY ready_at",
+                ps -> ps.setTimestamp(1, Timestamp.valueOf(cutoff)));
     }
 
     @Override
@@ -173,13 +185,25 @@ public class JdbcReservationRepository implements ReservationRepository {
     }
 
     private Reservation mapRow(ResultSet rs) throws SQLException {
-        return new Reservation(
+        Reservation reservation = new Reservation(
                 rs.getLong("id"),
                 rs.getLong("book_id"),
                 rs.getLong("patron_id"),
                 rs.getTimestamp("reserved_at").toLocalDateTime(),
                 rs.getInt("queue_position"),
                 ReservationStatus.valueOf(rs.getString("status")));
+        Timestamp readyAt = rs.getTimestamp("ready_at");
+        reservation.setReadyAt(readyAt != null ? readyAt.toLocalDateTime() : null);
+        return reservation;
+    }
+
+    private void setNullableTimestamp(PreparedStatement ps, int index, LocalDateTime value)
+            throws SQLException {
+        if (value != null) {
+            ps.setTimestamp(index, Timestamp.valueOf(value));
+        } else {
+            ps.setNull(index, Types.TIMESTAMP);
+        }
     }
 
     @FunctionalInterface

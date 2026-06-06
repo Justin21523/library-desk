@@ -19,6 +19,9 @@ public interface ReservationRepository extends Repository<Reservation, Long> {
     /** @return all PENDING/READY reservations across all books, for display. */
     List<Reservation> findAllActive();
 
+    /** @return READY reservations whose ready_at is before the cutoff (expired holds). */
+    List<Reservation> findReadyExpired(java.time.LocalDateTime cutoff);
+
     /** @return the highest queue position currently used (PENDING/READY) for a book, or 0 if none. */
     int maxQueuePosition(Long bookId);
 }

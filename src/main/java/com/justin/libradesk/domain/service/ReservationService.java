@@ -29,17 +29,20 @@ public class ReservationService {
     private final PatronRepository patronRepository;
     private final BookRepository bookRepository;
     private final AuditLogService auditLogService;
+    private final SettingsService settingsService;
     private final Clock clock;
 
     public ReservationService(ReservationRepository reservationRepository,
                               PatronRepository patronRepository,
                               BookRepository bookRepository,
                               AuditLogService auditLogService,
+                              SettingsService settingsService,
                               Clock clock) {
         this.reservationRepository = reservationRepository;
         this.patronRepository = patronRepository;
         this.bookRepository = bookRepository;
         this.auditLogService = auditLogService;
+        this.settingsService = settingsService;
         this.clock = clock;
     }
 
@@ -80,12 +83,41 @@ public class ReservationService {
         Optional<Reservation> next = reservationRepository.findNextPending(bookId);
         next.ifPresent(reservation -> {
             reservation.setStatus(ReservationStatus.READY);
+            reservation.setReadyAt(LocalDateTime.now(clock));
             reservationRepository.save(reservation);
             auditLogService.record(actor, "RESERVATION_READY", "Reservation", reservation.getId(),
                     "book=" + bookId + " patron=" + reservation.getPatronId());
             log.info("Reservation {} promoted to READY for book {}", reservation.getId(), bookId);
         });
         return next;
+    }
+
+    /** @return true if the book has anyone waiting (PENDING) in its queue. */
+    public boolean hasPending(Long bookId) {
+        return reservationRepository.findNextPending(bookId).isPresent();
+    }
+
+    /**
+     * Expires READY holds that have not been collected within
+     * {@code reservation.ready.expiry.days}, promoting the next patron for each.
+     *
+     * @return the number of reservations expired
+     */
+    public int expireStaleReady(String actor) {
+        int expiryDays = settingsService.getInt("reservation.ready.expiry.days", 3);
+        LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(expiryDays);
+        List<Reservation> stale = reservationRepository.findReadyExpired(cutoff);
+        for (Reservation reservation : stale) {
+            reservation.setStatus(ReservationStatus.EXPIRED);
+            reservationRepository.save(reservation);
+            auditLogService.record(actor, "RESERVATION_EXPIRED", "Reservation", reservation.getId(),
+                    "book=" + reservation.getBookId());
+            promoteNext(reservation.getBookId(), actor);
+        }
+        if (!stale.isEmpty()) {
+            log.info("Expired {} stale READY reservation(s)", stale.size());
+        }
+        return stale.size();
     }
 
     /** Cancels a reservation (e.g. the patron no longer wants the hold). */

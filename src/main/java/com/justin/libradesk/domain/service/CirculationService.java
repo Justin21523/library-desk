@@ -16,8 +16,10 @@ import com.justin.libradesk.validation.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -41,6 +43,7 @@ public class CirculationService {
     private final LoanRepository loanRepository;
     private final AuditLogService auditLogService;
     private final ReservationService reservationService;
+    private final FineService fineService;
     private final SettingsService settingsService;
     private final BorrowingPolicy borrowingPolicy;
     private final Clock clock;
@@ -50,6 +53,7 @@ public class CirculationService {
                               LoanRepository loanRepository,
                               AuditLogService auditLogService,
                               ReservationService reservationService,
+                              FineService fineService,
                               SettingsService settingsService,
                               BorrowingPolicy borrowingPolicy,
                               Clock clock) {
@@ -58,6 +62,7 @@ public class CirculationService {
         this.loanRepository = loanRepository;
         this.auditLogService = auditLogService;
         this.reservationService = reservationService;
+        this.fineService = fineService;
         this.settingsService = settingsService;
         this.borrowingPolicy = borrowingPolicy;
         this.clock = clock;
@@ -80,6 +85,12 @@ public class CirculationService {
 
         if (!copy.isAvailable()) {
             throw new ValidationException("Copy is not available (status: " + copy.getStatus() + ")");
+        }
+
+        BigDecimal fineThreshold = settingsService.getBigDecimal("fine.block.threshold", BigDecimal.ZERO);
+        if (fineThreshold.signum() > 0
+                && fineService.unpaidTotal(patronId).compareTo(fineThreshold) > 0) {
+            throw new ValidationException("Outstanding fines exceed the allowed limit");
         }
 
         int activeLoans = loanRepository.countActiveByPatron(patronId);
@@ -129,6 +140,11 @@ public class CirculationService {
         loan.setStatus(LoanStatus.RETURNED);
         loanRepository.save(loan);
 
+        if (wasOverdue) {
+            long overdueDays = Math.max(1, ChronoUnit.DAYS.between(loan.getDueAt(), now));
+            fineService.chargeOverdue(loan.getPatronId(), loan.getId(), overdueDays, actor);
+        }
+
         // If someone is waiting for this book, hold the copy for the next in line;
         // otherwise it returns to the shelf.
         Optional<Reservation> promoted = reservationService.promoteNext(copy.getBookId(), actor);
@@ -163,6 +179,33 @@ public class CirculationService {
             log.info("Marked {} loan(s) overdue", overdue.size());
         }
         return overdue.size();
+    }
+
+    /**
+     * Renews a loan by extending its due date one more loan period, provided no
+     * other patron is waiting for the book.
+     *
+     * @return the new due date
+     * @throws ValidationException if there is no active loan or the book is reserved
+     */
+    public LocalDateTime renew(Long copyId, String actor) {
+        BookCopy copy = bookCopyRepository.findById(copyId)
+                .orElseThrow(() -> new ValidationException("Book copy not found: " + copyId));
+        Loan loan = loanRepository.findActiveByCopy(copyId)
+                .orElseThrow(() -> new ValidationException("No active loan for copy: " + copyId));
+        if (reservationService.hasPending(copy.getBookId())) {
+            throw new ValidationException("Cannot renew: another patron has reserved this book");
+        }
+
+        LocalDateTime newDueAt = LocalDateTime.now(clock)
+                .plusDays(settingsService.getInt("loan.period.days", 14));
+        loan.setDueAt(newDueAt);
+        loan.setStatus(LoanStatus.ACTIVE); // clears OVERDUE if it had been flagged
+        loanRepository.save(loan);
+
+        auditLogService.record(actor, "LOAN_RENEWED", "Loan", loan.getId(), "newDue=" + newDueAt);
+        log.info("Loan {} renewed: copy={} newDue={}", loan.getId(), copyId, newDueAt);
+        return newDueAt;
     }
 
     /** Resolves the (settings-backed) borrowing limit for a patron type. */
