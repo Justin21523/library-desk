@@ -8,14 +8,18 @@ import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.domain.service.CirculationService;
 import com.justin.libradesk.domain.service.DashboardService;
 import com.justin.libradesk.domain.service.PatronService;
+import com.justin.libradesk.domain.service.ReportsService;
 import com.justin.libradesk.domain.service.ReservationService;
+import com.justin.libradesk.domain.service.SettingsService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
+import com.justin.libradesk.infrastructure.export.CsvService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookCopyRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookRepository;
 import com.justin.libradesk.repository.jdbc.JdbcLoanRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPatronRepository;
 import com.justin.libradesk.repository.jdbc.JdbcReservationRepository;
+import com.justin.libradesk.repository.jdbc.JdbcSettingsRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
 
 import java.time.Clock;
@@ -41,6 +45,9 @@ public final class AppContext implements AutoCloseable {
     private final CirculationService circulationService;
     private final ReservationService reservationService;
     private final DashboardService dashboardService;
+    private final ReportsService reportsService;
+    private final SettingsService settingsService;
+    private final CsvService csvService;
     private final AuditLogService auditLogService;
 
     private User currentUser;
@@ -56,18 +63,22 @@ public final class AppContext implements AutoCloseable {
         JdbcBookCopyRepository bookCopyRepository = new JdbcBookCopyRepository(databaseManager);
         JdbcLoanRepository loanRepository = new JdbcLoanRepository(databaseManager);
         JdbcReservationRepository reservationRepository = new JdbcReservationRepository(databaseManager);
+        JdbcSettingsRepository settingsRepository = new JdbcSettingsRepository(databaseManager);
         JdbcAuditLogRepository auditLogRepository = new JdbcAuditLogRepository(databaseManager);
 
         this.auditLogService = new AuditLogService(auditLogRepository, clock);
+        this.settingsService = new SettingsService(settingsRepository, config, auditLogService);
         this.authService = new AuthService(userRepository);
         this.patronService = new PatronService(patronRepository, auditLogService);
         this.catalogService = new CatalogService(bookRepository, bookCopyRepository, auditLogService, clock);
         this.reservationService = new ReservationService(reservationRepository, patronRepository,
                 bookRepository, auditLogService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, reservationService, new BorrowingPolicy(), config, clock);
+                loanRepository, auditLogService, reservationService, settingsService, new BorrowingPolicy(), clock);
         this.dashboardService = new DashboardService(bookRepository, bookCopyRepository,
                 patronRepository, loanRepository, reservationRepository);
+        this.reportsService = new ReportsService(loanRepository, clock);
+        this.csvService = new CsvService();
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -112,6 +123,18 @@ public final class AppContext implements AutoCloseable {
 
     public DashboardService dashboardService() {
         return dashboardService;
+    }
+
+    public ReportsService reportsService() {
+        return reportsService;
+    }
+
+    public SettingsService settingsService() {
+        return settingsService;
+    }
+
+    public CsvService csvService() {
+        return csvService;
     }
 
     public AuditLogService auditLogService() {
