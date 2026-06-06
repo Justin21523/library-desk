@@ -96,11 +96,31 @@ CREATE TABLE IF NOT EXISTS reservations (
     book_id        BIGINT    NOT NULL,
     patron_id      BIGINT    NOT NULL,
     reserved_at    TIMESTAMP NOT NULL,
+    ready_at       TIMESTAMP,                   -- set when promoted to READY (drives expiry)
     queue_position INTEGER   NOT NULL,
     status         TEXT      NOT NULL,          -- PENDING | READY | FULFILLED | CANCELLED | EXPIRED
     FOREIGN KEY (book_id)   REFERENCES books(id),
     FOREIGN KEY (patron_id) REFERENCES patrons(id)
 );
+
+-- Upgrade existing databases created before ready_at was added.
+ALTER TABLE reservations ADD COLUMN IF NOT EXISTS ready_at TIMESTAMP;
+
+-- Monetary penalties for overdue returns.
+CREATE TABLE IF NOT EXISTS fines (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    patron_id  BIGINT        NOT NULL,
+    loan_id    BIGINT,
+    amount     NUMERIC(10,2) NOT NULL,
+    status     TEXT          NOT NULL,          -- UNPAID | PAID | WAIVED
+    created_at TIMESTAMP     NOT NULL,
+    settled_at TIMESTAMP,
+    FOREIGN KEY (patron_id) REFERENCES patrons(id),
+    FOREIGN KEY (loan_id)   REFERENCES loans(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fines_patron ON fines(patron_id);
+CREATE INDEX IF NOT EXISTS idx_fines_status ON fines(status);
 
 -- Append-only record of important operations.
 CREATE TABLE IF NOT EXISTS audit_logs (

@@ -5,6 +5,7 @@ import com.justin.libradesk.repository.SettingsRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,8 @@ public class SettingsService {
             "borrow.limit.student",
             "borrow.limit.staff",
             "borrow.limit.public",
-            "overdue.sweep.minutes");
+            "overdue.sweep.minutes",
+            "reservation.ready.expiry.days");
 
     private final SettingsRepository settingsRepository;
     private final AppConfig defaults;
@@ -53,6 +55,16 @@ public class SettingsService {
 
     public String getString(String key, String fallback) {
         return settingsRepository.find(key).orElseGet(() -> defaults.getString(key, fallback));
+    }
+
+    /** Reads a decimal setting (e.g. a money amount); falls back on a bad/absent value. */
+    public BigDecimal getBigDecimal(String key, BigDecimal fallback) {
+        try {
+            return new BigDecimal(getString(key, fallback.toPlainString()).trim());
+        } catch (NumberFormatException e) {
+            log.warn("Setting {} is not a number; using default {}", key, fallback);
+            return fallback;
+        }
     }
 
     /** Updates an integer setting (validated as a non-negative number). */
