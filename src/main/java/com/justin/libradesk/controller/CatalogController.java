@@ -8,12 +8,15 @@ import com.justin.libradesk.domain.model.Publisher;
 import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.infrastructure.marc.MarcData;
+import com.justin.libradesk.util.Isbn;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.Label;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
@@ -21,6 +24,8 @@ import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
 import javafx.util.StringConverter;
@@ -30,6 +35,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Catalog management: search/list books and add new records, including
@@ -258,6 +264,71 @@ public class CatalogController {
         dialog.getDialogPane().setContent(area);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         dialog.showAndWait();
+    }
+
+    @FXML
+    private void onSearchLoc() {
+        TextField query = new TextField();
+        query.setPromptText("ISBN or title");
+        ListView<MarcData> results = new ListView<>();
+        results.setPrefHeight(220);
+        results.setPrefWidth(420);
+        results.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(MarcData data, boolean empty) {
+                super.updateItem(data, empty);
+                setText(empty || data == null ? null : describe(data));
+            }
+        });
+
+        Button search = new Button("Search");
+        search.setOnAction(e -> {
+            String text = query.getText() == null ? "" : query.getText().trim();
+            if (text.isEmpty()) {
+                return;
+            }
+            try {
+                List<MarcData> found = Isbn.isValid(text)
+                        ? AppContext.get().locSruClient().searchByIsbn(text)
+                        : AppContext.get().locSruClient().searchByTitle(text);
+                results.setItems(FXCollections.observableArrayList(found));
+                if (found.isEmpty()) {
+                    Dialogs.error("No records found at the Library of Congress.");
+                }
+            } catch (RuntimeException ex) {
+                Dialogs.error("LoC search failed: " + ex.getMessage());
+            }
+        });
+
+        VBox content = new VBox(8, new HBox(8, query, search), new Label("Results:"), results);
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("Search Library of Congress");
+        dialog.setHeaderText("Find a record to import (copy cataloging)");
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        Optional<ButtonType> choice = dialog.showAndWait();
+        if (choice.isEmpty() || choice.get() != ButtonType.OK) {
+            return;
+        }
+        MarcData selected = results.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Dialogs.error("Select a record to import.");
+            return;
+        }
+        try {
+            catalog().importMarc(selected, actor());
+            loadReferenceData();
+            onShowAll();
+            Dialogs.info("Imported: " + selected.book().getTitle());
+        } catch (RuntimeException ex) {
+            Dialogs.error(ex.getMessage());
+        }
+    }
+
+    private static String describe(MarcData data) {
+        String title = data.book().getTitle() == null ? "(untitled)" : data.book().getTitle();
+        return data.book().getIsbn() == null ? title : title + " (" + data.book().getIsbn() + ")";
     }
 
     private void loadReferenceData() {

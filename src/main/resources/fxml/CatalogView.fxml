@@ -32,6 +32,7 @@
         <Button text="Import MARC" onAction="#onImportMarc"/>
         <Button text="Export MARC" onAction="#onExportMarc"/>
         <Button text="View MARC" onAction="#onViewMarc"/>
+        <Button text="Search LoC" onAction="#onSearchLoc"/>
     </HBox>
 
     <VBox spacing="6">
