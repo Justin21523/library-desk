@@ -38,6 +38,17 @@ public final class AppConfig {
         return new AppConfig(props);
     }
 
+    /**
+     * Builds a config from an explicit set of properties (still honouring the
+     * environment-variable override). Useful for tests that need to point at a
+     * different database, e.g. a Testcontainers instance.
+     */
+    public static AppConfig fromProperties(Properties properties) {
+        Properties copy = new Properties();
+        copy.putAll(properties);
+        return new AppConfig(copy);
+    }
+
     public String getString(String key) {
         String value = resolve(key);
         if (value == null) {

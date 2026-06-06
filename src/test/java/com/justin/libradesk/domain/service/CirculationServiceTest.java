@@ -9,6 +9,7 @@ import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Loan;
 import com.justin.libradesk.domain.model.Patron;
 import com.justin.libradesk.dto.LoanResult;
+import com.justin.libradesk.dto.ReturnResult;
 import com.justin.libradesk.repository.BookCopyRepository;
 import com.justin.libradesk.repository.LoanRepository;
 import com.justin.libradesk.repository.PatronRepository;
@@ -26,7 +27,9 @@ import java.time.ZoneId;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -145,6 +148,54 @@ class CirculationServiceTest {
         when(loanRepository.countActiveByPatron(10L)).thenReturn(5); // student limit is 5
 
         assertThrows(ValidationException.class, () -> circulationService.checkout(10L, 20L, "admin"));
+        verify(loanRepository, never()).save(any());
+    }
+
+    private Loan activeLoan(LocalDateTime dueAt) {
+        return new Loan(77L, 20L, 10L, NOW.minusDays(7), dueAt, null, LoanStatus.ACTIVE);
+    }
+
+    @Test
+    void returnByCopyClosesLoanAndFreesCopy() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.plusDays(5))));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnResult result = circulationService.returnByCopy(20L, "admin");
+
+        assertEquals(77L, result.loanId());
+        assertEquals(NOW, result.returnedAt());
+        assertFalse(result.wasOverdue());
+
+        ArgumentCaptor<Loan> loanCaptor = ArgumentCaptor.forClass(Loan.class);
+        verify(loanRepository).save(loanCaptor.capture());
+        assertEquals(LoanStatus.RETURNED, loanCaptor.getValue().getStatus());
+        assertEquals(NOW, loanCaptor.getValue().getReturnedAt());
+
+        ArgumentCaptor<BookCopy> copyCaptor = ArgumentCaptor.forClass(BookCopy.class);
+        verify(bookCopyRepository).save(copyCaptor.capture());
+        assertEquals(CopyStatus.AVAILABLE, copyCaptor.getValue().getStatus());
+
+        verify(auditLogService).record(eq("admin"), eq("LOAN_RETURNED"), eq("Loan"), eq(77L), any());
+    }
+
+    @Test
+    void returnByCopyFlagsOverdueLoan() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.minusDays(1))));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        ReturnResult result = circulationService.returnByCopy(20L, "admin");
+
+        assertTrue(result.wasOverdue());
+    }
+
+    @Test
+    void returnByCopyRejectsWhenNoActiveLoan() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.AVAILABLE)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.empty());
+
+        assertThrows(ValidationException.class, () -> circulationService.returnByCopy(20L, "admin"));
         verify(loanRepository, never()).save(any());
     }
 }
