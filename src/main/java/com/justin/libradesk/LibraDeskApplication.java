@@ -1,0 +1,99 @@
+package com.justin.libradesk;
+
+import com.justin.libradesk.config.AppConfig;
+import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.controller.ViewNavigator;
+import com.justin.libradesk.domain.enumtype.UserRole;
+import com.justin.libradesk.domain.model.User;
+import com.justin.libradesk.infrastructure.database.DatabaseManager;
+import com.justin.libradesk.infrastructure.database.SchemaInitializer;
+import com.justin.libradesk.repository.UserRepository;
+import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
+import com.justin.libradesk.util.PasswordHasher;
+import javafx.application.Application;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.LocalDateTime;
+
+/**
+ * JavaFX entry point. Performs the startup sequence: load configuration, open
+ * the database, apply the schema, seed a default admin account on first run,
+ * wire the application context, and show the login screen.
+ */
+public class LibraDeskApplication extends Application {
+
+    private static final Logger log = LoggerFactory.getLogger(LibraDeskApplication.class);
+
+    @Override
+    public void start(Stage primaryStage) {
+        try {
+            AppConfig config = AppConfig.load();
+            DatabaseManager databaseManager = new DatabaseManager(config);
+            new SchemaInitializer(databaseManager).initialize();
+            seedDefaultAdmin(databaseManager);
+
+            AppContext.initialize(config, databaseManager);
+
+            primaryStage.setMinWidth(420);
+            primaryStage.setMinHeight(360);
+            ViewNavigator.init(primaryStage);
+            ViewNavigator.get().showLogin();
+            primaryStage.show();
+        } catch (RuntimeException e) {
+            log.error("Startup failed", e);
+            showFatalError(e);
+            Platform.exit();
+        }
+    }
+
+    @Override
+    public void stop() {
+        // Release the connection pool if the context was initialised.
+        try {
+            AppContext.get().close();
+        } catch (IllegalStateException ignored) {
+            // Context never initialised (startup failed); nothing to close.
+        }
+    }
+
+    /**
+     * Creates an initial ADMIN account on a fresh database so the app is usable.
+     * TODO(security): force a password change on first login in a later phase.
+     */
+    private void seedDefaultAdmin(DatabaseManager databaseManager) {
+        UserRepository users = new JdbcUserRepository(databaseManager);
+        if (!users.findAll().isEmpty()) {
+            return;
+        }
+        User admin = new User(null, "admin", PasswordHasher.hash("admin"), "Default Administrator",
+                UserRole.ADMIN, true, LocalDateTime.now());
+        users.save(admin);
+        log.warn("Seeded default admin account (username 'admin', password 'admin'). Change it immediately.");
+    }
+
+    private void showFatalError(Throwable error) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle("LibraDesk - Startup error");
+        alert.setHeaderText("LibraDesk could not start");
+        alert.setContentText(rootCauseMessage(error)
+                + "\n\nCheck that PostgreSQL is running and the database exists,"
+                + " then review application.properties.");
+        alert.showAndWait();
+    }
+
+    private String rootCauseMessage(Throwable error) {
+        Throwable cause = error;
+        while (cause.getCause() != null) {
+            cause = cause.getCause();
+        }
+        return cause.getMessage();
+    }
+
+    public static void main(String[] args) {
+        launch(args);
+    }
+}

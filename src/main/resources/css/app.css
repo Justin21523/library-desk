@@ -1,0 +1,47 @@
+.root {
+    -fx-font-family: "Segoe UI", "Noto Sans", sans-serif;
+    -fx-font-size: 13px;
+    -fx-background-color: #f4f6f8;
+}
+
+.login-pane {
+    -fx-background-color: white;
+    -fx-padding: 32;
+    -fx-spacing: 14;
+    -fx-background-radius: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 4);
+}
+
+.app-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1f2d3d;
+}
+
+.error-label {
+    -fx-text-fill: #c0392b;
+}
+
+.sidebar {
+    -fx-background-color: #1f2d3d;
+    -fx-padding: 12;
+    -fx-spacing: 6;
+}
+
+.sidebar .button {
+    -fx-background-color: transparent;
+    -fx-text-fill: #d4dae0;
+    -fx-alignment: center-left;
+    -fx-pref-width: 180;
+}
+
+.sidebar .button:hover {
+    -fx-background-color: #2c3e50;
+    -fx-text-fill: white;
+}
+
+.primary-button {
+    -fx-background-color: #2d7ff9;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
