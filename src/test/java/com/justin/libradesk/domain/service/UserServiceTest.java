@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,7 +88,7 @@ class UserServiceTest {
     }
 
     @Test
-    void createStaffStoresHashedPassword() {
+    void createStaffStoresHashedPasswordAndForcesFirstLoginChange() {
         when(userRepository.findByUsername("bob")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -96,5 +97,33 @@ class UserServiceTest {
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(captor.capture());
         assertTrue(PasswordHasher.matches("password", captor.getValue().getPasswordHash()));
+        assertTrue(captor.getValue().isMustChangePassword());
+    }
+
+    @Test
+    void changePasswordClearsForcedChangeFlag() {
+        User user = userWithPassword("oldpass");
+        user.setMustChangePassword(true);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        userService.changePassword(1L, "oldpass", "newpass", "alice");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertFalse(captor.getValue().isMustChangePassword());
+    }
+
+    @Test
+    void deactivateMarksUserInactive() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(userWithPassword("x")));
+        when(userRepository.save(any(User.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        userService.deactivate(1L, "admin");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+        assertFalse(captor.getValue().isActive());
+        verify(auditLogService).record("admin", "USER_DEACTIVATED", "User", 1L, null);
     }
 }
