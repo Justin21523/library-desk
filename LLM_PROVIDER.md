@@ -47,8 +47,15 @@ Read these to understand the big picture quickly:
   schema → seed default `admin`/`admin` on an empty `users` table → initialise
   `AppContext` → show login. Wrap startup failures in a JavaFX `Alert`.
 - **`controller/ViewNavigator`** — owns the primary `Stage` and swaps the scene
-  root between top-level views (`showLogin()` / `showMain()`). Navigation goes
-  through this, not between controllers.
+  root between the two top-level scenes (`showLogin()` / `showMain()`).
+- **`controller/MainLayoutController`** — the shell after login; each sidebar
+  button loads a feature view's FXML into the central content `StackPane`. Feature
+  controllers (Dashboard/Catalog/Copies/Patrons/Circulation/Reservations) are
+  no-arg and pull their service from `AppContext.get()`; the staff username for
+  audit comes from `AppContext.get().getCurrentUser().getUsername()`. They surface
+  service `ValidationException`s through `controller/Dialogs`. Human identifiers
+  (membership number, barcode) are resolved to ids in the controller via service
+  lookups before calling the workflow methods.
 
 ### Conventions that span multiple files
 
@@ -75,17 +82,20 @@ Read these to understand the big picture quickly:
 
 ### Phase status (important when reading skeletons)
 
-Phase 2 is complete. **Fully implemented:** all JDBC repositories except
-reservations — `JdbcUserRepository`, `JdbcPatronRepository`,
-`JdbcAuditLogRepository`, `JdbcBookRepository` (with transactional `book_authors`
-sync), `JdbcBookCopyRepository`, `JdbcLoanRepository` — plus `AuthService`,
-`PatronService`, `BorrowingPolicy`, and `CirculationService.checkout` /
-`returnByCopy`. **Still a skeleton:** `JdbcReservationRepository` (reads return
-empty, writes throw `UnsupportedOperationException`) and `ReservationService`.
-**Still deferred:** reservation-queue promotion on return, the overdue-detection
-sweep (`LoanRepository.findOverdue()` exists and is tested but no sweep calls it
-yet), and the feature views behind the main-layout buttons. When extending,
-follow the implemented repositories as the reference pattern.
+Phase 3 is complete. **Fully implemented:** every JDBC repository; all services
+(`AuthService`, `PatronService`, `CatalogService` with book/copy create,
+`CirculationService.checkout`/`returnByCopy`, `ReservationService`,
+`DashboardService`, `AuditLogService`); and the feature views Dashboard, Catalog,
+Book Copies, Patrons, Circulation, Reservations. On return, a waiting reservation
+is promoted to READY and the copy is held as RESERVED (see
+`CirculationService.returnByCopy` + `ReservationService.promoteNext`).
+**Placeholders:** the Reports and Settings sidebar buttons. **Still deferred:** a
+scheduled overdue-detection sweep (`LoanRepository.findOverdue()` exists and is
+tested but nothing calls it on a timer), CSV import/export, author/publisher/
+category management UI (the columns exist and `JdbcBookRepository` syncs
+`book_authors`, but there is no screen for it yet). When extending, follow the
+implemented repositories/services and the existing feature controllers as the
+reference pattern.
 
 ## Language rules
 

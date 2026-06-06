@@ -5,11 +5,12 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 2 (persistence + circulation). On top of the Phase 1
-> foundation (app shell, login, schema, domain model, borrowing rule), the
-> Book/BookCopy/Loan JDBC repositories are now fully implemented and the
-> loan/return (check-out / check-in) workflow is in place. Reservation,
-> reporting, CSV, and the feature UI views are delivered in later phases.
+> **Status:** Phase 3 (reservations + feature UI). On top of Phases 1–2
+> (foundation, persistence, check-out/check-in), the reservation hold queue is
+> implemented end-to-end — returning a copy promotes the next patron and holds
+> the copy for them — and the core feature screens are wired to the services:
+> Dashboard, Catalog, Book Copies, Patrons, Circulation, and Reservations.
+> Reports, Settings, and CSV import/export are delivered in later phases.
 
 ## Tech stack
 
