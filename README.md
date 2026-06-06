@@ -5,10 +5,11 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 1 (foundation). The application shell, login, database
-> layer, domain model, and the core borrowing rule are in place. Catalog,
-> circulation, reservation, reporting, and CSV features are delivered in later
-> phases.
+> **Status:** Phase 2 (persistence + circulation). On top of the Phase 1
+> foundation (app shell, login, schema, domain model, borrowing rule), the
+> Book/BookCopy/Loan JDBC repositories are now fully implemented and the
+> loan/return (check-out / check-in) workflow is in place. Reservation,
+> reporting, CSV, and the feature UI views are delivered in later phases.
 
 ## Tech stack
 
@@ -110,13 +111,28 @@ Change it immediately — it is intended only to bootstrap a fresh database.
 ## Test
 
 ```bash
-mvn test                                   # all tests
+mvn test                                   # unit tests only (no database/Docker)
 mvn -Dtest=BorrowingPolicyTest test        # a single test class
 mvn -Dtest=CirculationServiceTest#checkoutRejectsSuspendedPatron test
 ```
 
-The Phase 1 tests cover the borrowing rule and the checkout workflow; they run
-without a database.
+The unit tests (`BorrowingPolicyTest`, `CirculationServiceTest`) cover the
+borrowing rule and the check-out/check-in workflows with mocked repositories, so
+they need neither a database nor Docker.
+
+### Integration tests
+
+The JDBC repositories are verified against a real PostgreSQL started by
+[Testcontainers](https://java.testcontainers.org/). They run only under the
+`it` profile and **require Docker**:
+
+```bash
+mvn verify -Pit                            # unit tests + repository integration tests
+```
+
+> Note: the integration base class pins the Docker client API version
+> (`api.version=1.41`) because the bundled docker-java client otherwise
+> negotiates an API version that newer daemons (minimum 1.40) reject.
 
 ## License
 

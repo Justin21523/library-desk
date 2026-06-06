@@ -6,17 +6,26 @@ This file provides guidance to LLMProvider Tooling (llm_provider.ai/code) when w
 
 ```bash
 mvn javafx:run                                 # run the JavaFX desktop app
-mvn test                                       # run all tests
+mvn test                                       # unit tests only (no DB / no Docker)
+mvn verify -Pit                                # + repository integration tests (needs Docker)
 mvn -Dtest=BorrowingPolicyTest test            # run one test class
 mvn -Dtest=CirculationServiceTest#checkoutRejectsSuspendedPatron test   # run one test method
 mvn compile                                    # compile only
 mvn clean package                              # build a jar
 ```
 
-Phase 1 tests (`domain.service`) do **not** require a database. Running the app
-does: a PostgreSQL instance must be reachable per `application.properties`, and
-the target database must already exist (`createdb libradesk`). The schema is
-applied automatically at startup from `src/main/resources/db/schema.sql`.
+Unit tests (`domain.service`) do **not** require a database. The repository
+integration tests (`repository.jdbc.*IT`) run only under the `it` profile and
+require Docker — they spin up a real PostgreSQL via Testcontainers. Running the
+app needs a reachable PostgreSQL per `application.properties` with the target
+database already created (`createdb libradesk`); the schema is applied at startup
+from `src/main/resources/db/schema.sql`.
+
+Two non-obvious test details: the integration base class
+(`repository/jdbc/AbstractRepositoryIT`) pins `api.version=1.41` because the
+bundled docker-java negotiates an API version newer daemons reject, and it uses
+second-aligned `LocalDateTime`s since PostgreSQL `TIMESTAMP` is microsecond
+precision.
 
 ## Architecture
 
@@ -66,13 +75,16 @@ Read these to understand the big picture quickly:
 
 ### Phase status (important when reading skeletons)
 
-This is Phase 1. **Fully implemented:** `JdbcUserRepository`,
-`JdbcPatronRepository`, `JdbcAuditLogRepository`, `AuthService`, `PatronService`,
-`CirculationService.checkout`, `BorrowingPolicy`. **Intentional skeletons**
-(marked `TODO(phase2)`): `JdbcBookRepository`, `JdbcBookCopyRepository`,
-`JdbcLoanRepository`, `JdbcReservationRepository` (reads return empty, writes
-throw `UnsupportedOperationException`), plus the return/overdue/reservation
-workflows and the feature views behind the main-layout buttons. When extending,
+Phase 2 is complete. **Fully implemented:** all JDBC repositories except
+reservations — `JdbcUserRepository`, `JdbcPatronRepository`,
+`JdbcAuditLogRepository`, `JdbcBookRepository` (with transactional `book_authors`
+sync), `JdbcBookCopyRepository`, `JdbcLoanRepository` — plus `AuthService`,
+`PatronService`, `BorrowingPolicy`, and `CirculationService.checkout` /
+`returnByCopy`. **Still a skeleton:** `JdbcReservationRepository` (reads return
+empty, writes throw `UnsupportedOperationException`) and `ReservationService`.
+**Still deferred:** reservation-queue promotion on return, the overdue-detection
+sweep (`LoanRepository.findOverdue()` exists and is tested but no sweep calls it
+yet), and the feature views behind the main-layout buttons. When extending,
 follow the implemented repositories as the reference pattern.
 
 ## Language rules
