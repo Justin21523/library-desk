@@ -5,12 +5,14 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 9 (delivery & engineering) — the planned roadmap is complete.
-> On top of Phases 1–8: schema is managed by **Flyway** migrations; a **GitHub
-> Actions** workflow runs `mvn verify -Pit`; `scripts/package.sh` also builds a
-> native installer (`.deb`) where tooling is available; an **About** dialog reports
-> the version; and an optional dev **demo-data seeder** (`demo.seed=true`) populates
-> a fresh database for evaluation.
+> **Status:** Phase 10 (cataloging — MARC). On top of Phases 1–9, the catalog now
+> carries richer **MARC21**-derived bibliographic fields (edition, publication,
+> extent, series, language, material type, subjects, control number) and supports
+> **MARC import/export** — ISO 2709 (`.mrc`) and MARCXML via marc4j — with a
+> "View MARC" preview; the original record is retained for round-trip fidelity.
+> Authors/subjects/publishers are resolved (or created) on import. This is the
+> first of a cataloging track (copy cataloging from the Library of Congress,
+> authority control, and an OPAC follow); **BIBFRAME** is the longer-term direction.
 
 ## Tech stack
 

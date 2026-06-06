@@ -146,6 +146,16 @@ Read these to understand the big picture quickly:
 - **Demo data:** `infrastructure/DemoDataSeeder` runs at startup only when
   `demo.seed=true` and the catalog is empty (dev/demo convenience; never touches
   real data).
+- **MARC** lives in `infrastructure/marc`: `MarcService` does file I/O (`.mrc` via
+  ISO 2709, `.xml` via MARCXML, both marc4j) and `MarcMapper` converts between a
+  marc4j `Record` and `MarcData` (a `Book` plus author/subject/publisher *names*).
+  MARC carries names, not our ids, so `CatalogService.importMarc`/`exportMarc`/
+  `toMarcData` resolve names↔ids (find-or-create authors/subjects/publishers). The
+  original record is stored in `books.marc_xml` for fidelity. `Book` carries richer
+  fields (edition/pubPlace/extent/series/language/materialType/controlNumber/
+  summary) added as plain fields (not constructor args, to avoid churn) and a
+  `subjectIds` list synced like `authorIds` (`JdbcBookRepository.syncLinks`).
+  `util/Isbn` validates/normalises ISBN-10/13.
 
 ### Phase status (important when reading skeletons)
 
@@ -155,10 +165,15 @@ first-login password change; fines (charge on overdue return, block-over-thresho
 Fines screen), loan renewal, READY-reservation expiry via `MaintenanceScheduler`;
 audit-log viewer, Reports charts (Bar/Line) and PDF export (OpenPDF); Flyway
 migrations, GitHub Actions CI, a `.deb` installer, an About dialog, and a demo-data
-seeder. Possible future work (not planned): role-restricted *editing within* screens
-beyond sidebar gating, reservation pickup notifications, and i18n. When extending,
-follow the implemented repositories/services and the existing feature controllers
-as the reference pattern.
+seeder.
+
+A **cataloging track** is now in progress on top of that: **Phase 10 (done)** —
+richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util.
+**Planned:** Phase 11 — copy cataloging from the Library of Congress (SRU); Phase 12
+— authority control + DDC/LCC call numbers + spine labels; Phase 13 — OPAC + faceted
+search. BIBFRAME is noted as the longer-term direction. When extending, follow the
+implemented repositories/services and the existing feature controllers as the
+reference pattern.
 
 ## Language rules
 
