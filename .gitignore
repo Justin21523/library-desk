@@ -1,0 +1,19 @@
+# Build output
+target/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# Local runtime database & logs
+*.db
+*.db-journal
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
