@@ -62,7 +62,7 @@ abstract class AbstractRepositoryIT {
             s.execute("""
                     TRUNCATE book_authors, book_copies, loans, reservations,
                              books, patrons, authors, publishers, categories,
-                             audit_logs, users
+                             audit_logs, settings, users
                     RESTART IDENTITY CASCADE
                     """);
         }

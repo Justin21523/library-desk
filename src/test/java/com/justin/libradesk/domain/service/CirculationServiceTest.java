@@ -1,6 +1,5 @@
 package com.justin.libradesk.domain.service;
 
-import com.justin.libradesk.config.AppConfig;
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.enumtype.LoanStatus;
 import com.justin.libradesk.domain.enumtype.PatronStatus;
@@ -26,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,7 +33,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -59,15 +62,20 @@ class CirculationServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private ReservationService reservationService;
+    @Mock
+    private SettingsService settingsService;
 
     private CirculationService circulationService;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
-        AppConfig config = AppConfig.load();
+        // Return the supplied fallback for any setting, matching the bundled defaults
+        // (loan period 14, student limit 5).
+        lenient().when(settingsService.getInt(anyString(), anyInt()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
         circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, reservationService, new BorrowingPolicy(), config, clock);
+                loanRepository, auditLogService, reservationService, settingsService, new BorrowingPolicy(), clock);
     }
 
     private Patron patron(PatronStatus status) {
@@ -143,6 +151,21 @@ class CirculationServiceTest {
 
         assertThrows(ValidationException.class, () -> circulationService.checkout(10L, 20L, "admin"));
         verify(loanRepository, never()).save(any());
+    }
+
+    @Test
+    void markOverdueLoansFlipsActiveLoansToOverdue() {
+        Loan overdue = new Loan(1L, 20L, 10L, NOW.minusDays(20), NOW.minusDays(1), null, LoanStatus.ACTIVE);
+        when(loanRepository.findOverdue()).thenReturn(List.of(overdue));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        int count = circulationService.markOverdueLoans();
+
+        assertEquals(1, count);
+        ArgumentCaptor<Loan> captor = ArgumentCaptor.forClass(Loan.class);
+        verify(loanRepository).save(captor.capture());
+        assertEquals(LoanStatus.OVERDUE, captor.getValue().getStatus());
+        verify(auditLogService).record(eq("system"), eq("LOAN_OVERDUE"), eq("Loan"), eq(1L), any());
     }
 
     @Test
