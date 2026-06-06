@@ -103,7 +103,16 @@ Read these to understand the big picture quickly:
 - **Passwords** go through `util/PasswordHasher` (BCrypt). It still verifies
   legacy SHA-256 hashes so existing accounts work, and `AuthService` rehashes them
   to BCrypt on the next successful login (`needsRehash`). Account operations
-  (change password, create staff) live in `UserService`.
+  (change password, create staff, deactivate) live in `UserService`. New staff and
+  the seeded admin carry `mustChangePassword`; `LoginController` forces the change
+  before reaching the main layout.
+- **Access control** is `domain/service/PermissionPolicy` (pure, like
+  `BorrowingPolicy`): `UserRole → Set<Permission>`. Two enforcement layers:
+  `MainLayoutController` hides sidebar entries via `AccessControl.can(...)`, and
+  privileged controller actions call `AccessControl.require(...)` (which reads the
+  session user from `AppContext`). Circulation/Reservations/Dashboard are
+  ungated; CATALOG/PATRONS/REPORTS/FINES are LIBRARIAN+, SETTINGS/USERS/AUDIT are
+  ADMIN-only.
 - **Packaging** (`scripts/package.sh`) builds a jpackage `app-image` over a slim
   `jlink` runtime. The app runs JavaFX from the classpath, so the packaged entry
   point is `com.justin.libradesk.Launcher` (not `LibraDeskApplication`, which
@@ -112,17 +121,15 @@ Read these to understand the big picture quickly:
 
 ### Phase status (important when reading skeletons)
 
-Phase 5 is complete — the application is feature-complete for this project's
-scope. **Fully implemented:** every JDBC repository (incl. settings and the
-author/publisher/category reference repos); all services (`Auth` with
-upgrade-on-login, `User`, `Patron`, `Catalog` incl. reference data, `Circulation`,
-`Reservation`, `Dashboard`, `Reports`, `Settings`, `AuditLog`); BCrypt hashing;
-CSV; the overdue scheduler; a jlink/jpackage build; and ten screens (the nine
-features plus Catalog Data). **Possible future work:** force-password-change on
-first login, role-based UI gating (the `UserRole` exists but the UI does not
-restrict actions by role yet), reservation expiry, and platform installers
-(`jpackage --type deb/rpm/msi/dmg`). When extending, follow the implemented
-repositories/services and the existing feature controllers as the reference pattern.
+Roadmap Phases 6–9 are in progress (see `~/.llm_provider/plans/`). **Phase 6 (done):**
+role-based access control (`PermissionPolicy` + `AccessControl`, sidebar gating),
+a Users management screen, and forced password change on first login.
+**Remaining:** Phase 7 — fines (`fines` table/`Fine`/`FineService`, fine on
+overdue return, block-over-threshold), loan renewal, reservation expiry; Phase 8 —
+audit-log viewer, richer reports + JavaFX charts, PDF export (OpenPDF); Phase 9 —
+GitHub Actions CI, jpackage installers, Flyway migrations, demo seed data. When
+extending, follow the implemented repositories/services and the existing feature
+controllers as the reference pattern.
 
 ## Language rules
 

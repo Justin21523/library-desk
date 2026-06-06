@@ -5,12 +5,11 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 5 (security, reference data, packaging). On top of Phases
-> 1–4, this phase adds: **BCrypt** password hashing with transparent upgrade of
-> legacy hashes on login, plus password-change and staff-creation flows; a
-> **Catalog Data** screen to manage authors, publishers, and categories (wired
-> into the Add-Book form); and a **jlink + jpackage** build that produces a
-> self-contained native application image.
+> **Status:** Phase 6 (role-based access control). On top of Phases 1–5, this
+> phase enforces `UserRole`: a `PermissionPolicy` maps roles to permissions, the
+> sidebar hides areas a role cannot use, and privileged actions are guarded. Adds
+> a **Users** management screen (ADMIN) and a mandatory password change on first
+> login (the seeded `admin` account must change its password before use).
 
 ## Tech stack
 
@@ -107,7 +106,8 @@ On first launch the app seeds a default administrator account:
 | -------- | -------- |
 | `admin`  | `admin`  |
 
-Change it immediately — it is intended only to bootstrap a fresh database.
+This account is flagged to require a password change on first login, so you will
+be prompted to set a new password before reaching the main screen.
 
 ## Test
 
