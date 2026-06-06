@@ -5,11 +5,12 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 6 (role-based access control). On top of Phases 1–5, this
-> phase enforces `UserRole`: a `PermissionPolicy` maps roles to permissions, the
-> sidebar hides areas a role cannot use, and privileged actions are guarded. Adds
-> a **Users** management screen (ADMIN) and a mandatory password change on first
-> login (the seeded `admin` account must change its password before use).
+> **Status:** Phase 7 (fines, renewal, reservation expiry). On top of Phases
+> 1–6: overdue returns raise a **fine** (`fine.per.day` × overdue days) and a
+> **Fines** screen settles them; borrowing can be blocked over a configurable
+> unpaid threshold; loans can be **renewed** when no one is waiting; and READY
+> **reservations expire** after a configurable number of days (the next patron is
+> promoted). A background `MaintenanceScheduler` runs the overdue and expiry sweeps.
 
 ## Tech stack
 

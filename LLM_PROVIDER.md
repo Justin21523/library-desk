@@ -92,10 +92,22 @@ Read these to understand the big picture quickly:
 - **OVERDUE is still outstanding.** `markOverdueLoans()` flips ACTIVE→OVERDUE, but
   the loan still counts against the patron's limit and can still be returned, so
   `JdbcLoanRepository`'s "active" queries match `status IN ('ACTIVE','OVERDUE')`
-  while `findOverdue()` stays ACTIVE-only (idempotent sweep). The sweep runs on a
-  daemon thread via `infrastructure/scheduling/OverdueScheduler` (interval
-  `overdue.sweep.minutes`), started/stopped by `LibraDeskApplication`, and can be
-  triggered manually from the Reports screen.
+  while `findOverdue()` stays ACTIVE-only (idempotent sweep).
+- **Background maintenance** runs on a daemon thread via
+  `infrastructure/scheduling/MaintenanceScheduler` (interval `overdue.sweep.minutes`),
+  started/stopped by `LibraDeskApplication`. Each tick runs `markOverdueLoans()`
+  and `ReservationService.expireStaleReady(...)` (READY holds older than
+  `reservation.ready.expiry.days` expire and the next patron is promoted — this is
+  why reservations carry `ready_at`). The overdue sweep can also be triggered
+  manually from Reports.
+- **Fines** (`fines` table → `Fine`/`FineService`): an overdue return charges
+  `fine.per.day × overdue days` via `CirculationService.returnByCopy`. Checkout is
+  blocked when a patron's unpaid total exceeds `fine.block.threshold` (`0` =
+  disabled). The Fines screen pays/waives. Money is `BigDecimal`;
+  `SettingsService.getBigDecimal` reads the decimal settings (which are configured
+  in `application.properties`, not the integer-only Settings grid).
+- **Loan renewal** is `CirculationService.renew`: extends the due date one period
+  unless the book has a pending reservation (`ReservationService.hasPending`).
 - **CSV** lives in `infrastructure/export/CsvService` (Apache Commons CSV). It only
   maps between CSV and domain objects; the controllers loop over the parsed rows
   and call the services, catching per-row `ValidationException`s to build an
@@ -121,11 +133,11 @@ Read these to understand the big picture quickly:
 
 ### Phase status (important when reading skeletons)
 
-Roadmap Phases 6–9 are in progress (see `~/.llm_provider/plans/`). **Phase 6 (done):**
+Roadmap Phases 6–9 are in progress (see `~/.llm_provider/plans/`). **Done:** Phase 6 —
 role-based access control (`PermissionPolicy` + `AccessControl`, sidebar gating),
-a Users management screen, and forced password change on first login.
-**Remaining:** Phase 7 — fines (`fines` table/`Fine`/`FineService`, fine on
-overdue return, block-over-threshold), loan renewal, reservation expiry; Phase 8 —
+Users management screen, forced password change on first login; Phase 7 — fines
+(charge on overdue return, block-over-threshold, Fines screen), loan renewal, and
+READY-reservation expiry via `MaintenanceScheduler`. **Remaining:** Phase 8 —
 audit-log viewer, richer reports + JavaFX charts, PDF export (OpenPDF); Phase 9 —
 GitHub Actions CI, jpackage installers, Flyway migrations, demo seed data. When
 extending, follow the implemented repositories/services and the existing feature
