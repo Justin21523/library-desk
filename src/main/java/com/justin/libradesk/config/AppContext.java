@@ -6,6 +6,7 @@ import com.justin.libradesk.domain.service.AuthService;
 import com.justin.libradesk.domain.service.BorrowingPolicy;
 import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.domain.service.CirculationService;
+import com.justin.libradesk.domain.service.DashboardService;
 import com.justin.libradesk.domain.service.PatronService;
 import com.justin.libradesk.domain.service.ReservationService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
@@ -39,6 +40,7 @@ public final class AppContext implements AutoCloseable {
     private final CatalogService catalogService;
     private final CirculationService circulationService;
     private final ReservationService reservationService;
+    private final DashboardService dashboardService;
     private final AuditLogService auditLogService;
 
     private User currentUser;
@@ -59,10 +61,13 @@ public final class AppContext implements AutoCloseable {
         this.auditLogService = new AuditLogService(auditLogRepository, clock);
         this.authService = new AuthService(userRepository);
         this.patronService = new PatronService(patronRepository, auditLogService);
-        this.catalogService = new CatalogService(bookRepository, bookCopyRepository, auditLogService);
+        this.catalogService = new CatalogService(bookRepository, bookCopyRepository, auditLogService, clock);
+        this.reservationService = new ReservationService(reservationRepository, patronRepository,
+                bookRepository, auditLogService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, new BorrowingPolicy(), config, clock);
-        this.reservationService = new ReservationService(reservationRepository, auditLogService, clock);
+                loanRepository, auditLogService, reservationService, new BorrowingPolicy(), config, clock);
+        this.dashboardService = new DashboardService(bookRepository, bookCopyRepository,
+                patronRepository, loanRepository, reservationRepository);
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -103,6 +108,10 @@ public final class AppContext implements AutoCloseable {
 
     public ReservationService reservationService() {
         return reservationService;
+    }
+
+    public DashboardService dashboardService() {
+        return dashboardService;
     }
 
     public AuditLogService auditLogService() {
