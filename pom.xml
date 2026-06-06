@@ -24,6 +24,7 @@
         <postgresql.version>42.7.11</postgresql.version>
         <hikaricp.version>5.1.0</hikaricp.version>
         <commons.csv.version>1.11.0</commons.csv.version>
+        <bcrypt.version>0.10.2</bcrypt.version>
         <testcontainers.version>1.19.8</testcontainers.version>
 
         <mainClass>com.justin.libradesk.LibraDeskApplication</mainClass>
@@ -83,6 +84,13 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
             <version>${commons.csv.version}</version>
+        </dependency>
+
+        <!-- Password hashing (BCrypt, pure Java) -->
+        <dependency>
+            <groupId>at.favre.lib</groupId>
+            <artifactId>bcrypt</artifactId>
+            <version>${bcrypt.version}</version>
         </dependency>
 
         <!-- Testing -->

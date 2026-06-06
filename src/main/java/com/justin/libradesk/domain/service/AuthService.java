@@ -11,7 +11,8 @@ import java.util.Optional;
 /**
  * Authenticates staff accounts for login. Returns an empty result for any
  * failure (unknown user, wrong password, or deactivated account) so callers
- * cannot distinguish between them.
+ * cannot distinguish between them. On a successful login with a legacy
+ * (non-BCrypt) password hash, the stored hash is transparently upgraded.
  */
 public class AuthService {
 
@@ -27,16 +28,27 @@ public class AuthService {
         if (username == null || username.isBlank() || rawPassword == null) {
             return Optional.empty();
         }
-        Optional<User> user = userRepository.findByUsername(username.trim());
-        if (user.isEmpty() || !user.get().isActive()) {
+        Optional<User> found = userRepository.findByUsername(username.trim());
+        if (found.isEmpty() || !found.get().isActive()) {
             log.debug("Authentication failed for username '{}'", username);
             return Optional.empty();
         }
-        if (!PasswordHasher.matches(rawPassword, user.get().getPasswordHash())) {
+        User user = found.get();
+        if (!PasswordHasher.matches(rawPassword, user.getPasswordHash())) {
             log.debug("Wrong password for username '{}'", username);
             return Optional.empty();
         }
+        upgradeHashIfNeeded(user, rawPassword);
         log.info("User '{}' authenticated", username);
-        return user;
+        return Optional.of(user);
+    }
+
+    /** Rehashes a legacy password with BCrypt after a successful login. */
+    private void upgradeHashIfNeeded(User user, String rawPassword) {
+        if (PasswordHasher.needsRehash(user.getPasswordHash())) {
+            user.setPasswordHash(PasswordHasher.hash(rawPassword));
+            userRepository.save(user);
+            log.info("Upgraded password hash for user '{}' to BCrypt", user.getUsername());
+        }
     }
 }
