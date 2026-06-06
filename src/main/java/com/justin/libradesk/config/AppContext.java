@@ -16,6 +16,7 @@ import com.justin.libradesk.domain.service.UserService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.export.CsvService;
 import com.justin.libradesk.infrastructure.export.PdfService;
+import com.justin.libradesk.infrastructure.marc.MarcService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookCopyRepository;
@@ -27,6 +28,7 @@ import com.justin.libradesk.repository.jdbc.JdbcPatronRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPublisherRepository;
 import com.justin.libradesk.repository.jdbc.JdbcReservationRepository;
 import com.justin.libradesk.repository.jdbc.JdbcSettingsRepository;
+import com.justin.libradesk.repository.jdbc.JdbcSubjectRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
 
 import java.time.Clock;
@@ -58,6 +60,7 @@ public final class AppContext implements AutoCloseable {
     private final SettingsService settingsService;
     private final CsvService csvService;
     private final PdfService pdfService;
+    private final MarcService marcService;
     private final AuditLogService auditLogService;
 
     private User currentUser;
@@ -77,6 +80,7 @@ public final class AppContext implements AutoCloseable {
         JdbcAuthorRepository authorRepository = new JdbcAuthorRepository(databaseManager);
         JdbcPublisherRepository publisherRepository = new JdbcPublisherRepository(databaseManager);
         JdbcCategoryRepository categoryRepository = new JdbcCategoryRepository(databaseManager);
+        JdbcSubjectRepository subjectRepository = new JdbcSubjectRepository(databaseManager);
         JdbcFineRepository fineRepository = new JdbcFineRepository(databaseManager);
         JdbcAuditLogRepository auditLogRepository = new JdbcAuditLogRepository(databaseManager);
 
@@ -87,7 +91,7 @@ public final class AppContext implements AutoCloseable {
         this.userService = new UserService(userRepository, auditLogService, clock);
         this.patronService = new PatronService(patronRepository, auditLogService);
         this.catalogService = new CatalogService(bookRepository, bookCopyRepository, authorRepository,
-                publisherRepository, categoryRepository, auditLogService, clock);
+                publisherRepository, categoryRepository, subjectRepository, auditLogService, clock);
         this.reservationService = new ReservationService(reservationRepository, patronRepository,
                 bookRepository, auditLogService, settingsService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
@@ -99,6 +103,7 @@ public final class AppContext implements AutoCloseable {
                 patronRepository, clock);
         this.csvService = new CsvService();
         this.pdfService = new PdfService();
+        this.marcService = new MarcService();
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -167,6 +172,10 @@ public final class AppContext implements AutoCloseable {
 
     public PdfService pdfService() {
         return pdfService;
+    }
+
+    public MarcService marcService() {
+        return marcService;
     }
 
     public AuditLogService auditLogService() {

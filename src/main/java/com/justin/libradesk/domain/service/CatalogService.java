@@ -1,21 +1,26 @@
 package com.justin.libradesk.domain.service;
 
 import com.justin.libradesk.domain.enumtype.CopyStatus;
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.domain.model.Subject;
+import com.justin.libradesk.infrastructure.marc.MarcData;
 import com.justin.libradesk.repository.AuthorRepository;
 import com.justin.libradesk.repository.BookCopyRepository;
 import com.justin.libradesk.repository.BookRepository;
 import com.justin.libradesk.repository.CategoryRepository;
 import com.justin.libradesk.repository.PublisherRepository;
+import com.justin.libradesk.repository.SubjectRepository;
 import com.justin.libradesk.validation.ValidationException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -29,6 +34,7 @@ public class CatalogService {
     private final AuthorRepository authorRepository;
     private final PublisherRepository publisherRepository;
     private final CategoryRepository categoryRepository;
+    private final SubjectRepository subjectRepository;
     private final AuditLogService auditLogService;
     private final Clock clock;
 
@@ -37,6 +43,7 @@ public class CatalogService {
                           AuthorRepository authorRepository,
                           PublisherRepository publisherRepository,
                           CategoryRepository categoryRepository,
+                          SubjectRepository subjectRepository,
                           AuditLogService auditLogService,
                           Clock clock) {
         this.bookRepository = bookRepository;
@@ -44,6 +51,7 @@ public class CatalogService {
         this.authorRepository = authorRepository;
         this.publisherRepository = publisherRepository;
         this.categoryRepository = categoryRepository;
+        this.subjectRepository = subjectRepository;
         this.auditLogService = auditLogService;
         this.clock = clock;
     }
@@ -66,6 +74,9 @@ public class CatalogService {
         }
         if (book.getCreatedAt() == null) {
             book.setCreatedAt(LocalDateTime.now(clock));
+        }
+        if (book.getMaterialType() == null) {
+            book.setMaterialType(MaterialType.BOOK);
         }
         Book saved = bookRepository.save(book);
         auditLogService.record(actor, "BOOK_ADDED", "Book", saved.getId(), book.getTitle());
@@ -160,6 +171,76 @@ public class CatalogService {
 
     public List<Category> listCategories() {
         return categoryRepository.findAll();
+    }
+
+    public Subject addSubject(String term, String actor) {
+        Subject saved = subjectRepository.save(new Subject(null, requireName(term)));
+        auditLogService.record(actor, "SUBJECT_ADDED", "Subject", saved.id(), saved.term());
+        return saved;
+    }
+
+    public List<Subject> listSubjects() {
+        return subjectRepository.findAll();
+    }
+
+    // --- MARC import / export ---
+
+    /**
+     * Imports one MARC record as a new book, resolving its author/subject/publisher
+     * names to existing rows or creating them. The raw MARCXML is retained.
+     */
+    public Book importMarc(MarcData data, String actor) {
+        Book book = data.book();
+        if (data.publisherName() != null && !data.publisherName().isBlank()) {
+            book.setPublisherId(findOrCreatePublisher(data.publisherName()).id());
+        }
+        for (String name : data.authorNames()) {
+            if (name != null && !name.isBlank()) {
+                book.getAuthorIds().add(findOrCreateAuthor(name).id());
+            }
+        }
+        for (String term : data.subjectTerms()) {
+            if (term != null && !term.isBlank()) {
+                book.getSubjectIds().add(findOrCreateSubject(term).id());
+            }
+        }
+        return addBook(book, actor);
+    }
+
+    /** Builds MARC transfer data for every book (resolving ids back to names), for export. */
+    public List<MarcData> exportMarc() {
+        return listBooks().stream().map(this::toMarcData).toList();
+    }
+
+    /** Builds MARC transfer data for one book (for preview/export). */
+    public MarcData toMarcData(Book book) {
+        String publisher = book.getPublisherId() == null ? null
+                : publisherRepository.findById(book.getPublisherId()).map(Publisher::name).orElse(null);
+        List<String> authors = book.getAuthorIds().stream()
+                .map(id -> authorRepository.findById(id).map(Author::name).orElse(null))
+                .filter(Objects::nonNull).toList();
+        List<String> subjects = book.getSubjectIds().stream()
+                .map(id -> subjectRepository.findById(id).map(Subject::term).orElse(null))
+                .filter(Objects::nonNull).toList();
+        return new MarcData(book, authors, subjects, publisher);
+    }
+
+    private Author findOrCreateAuthor(String name) {
+        return authorRepository.findAll().stream()
+                .filter(a -> a.name().equalsIgnoreCase(name.trim())).findFirst()
+                .orElseGet(() -> authorRepository.save(new Author(null, name.trim())));
+    }
+
+    private Publisher findOrCreatePublisher(String name) {
+        return publisherRepository.findAll().stream()
+                .filter(p -> p.name().equalsIgnoreCase(name.trim())).findFirst()
+                .orElseGet(() -> publisherRepository.save(new Publisher(null, name.trim())));
+    }
+
+    private Subject findOrCreateSubject(String term) {
+        return subjectRepository.findAll().stream()
+                .filter(s -> s.term().equalsIgnoreCase(term.trim())).findFirst()
+                .orElseGet(() -> subjectRepository.save(new Subject(null, term.trim())));
     }
 
     private static String requireName(String name) {
