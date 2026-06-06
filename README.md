@@ -5,11 +5,12 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 8 (audit viewer, charts, PDF). On top of Phases 1–7: an
-> **Audit** screen (ADMIN) browses the audit trail with filters; the **Reports**
-> screen gains a Charts tab (most-borrowed books, active loans by patron type,
-> loans per day) alongside the overdue table; and **PDF export** (OpenPDF) produces
-> an overdue report and per-loan checkout receipts.
+> **Status:** Phase 9 (delivery & engineering) — the planned roadmap is complete.
+> On top of Phases 1–8: schema is managed by **Flyway** migrations; a **GitHub
+> Actions** workflow runs `mvn verify -Pit`; `scripts/package.sh` also builds a
+> native installer (`.deb`) where tooling is available; an **About** dialog reports
+> the version; and an optional dev **demo-data seeder** (`demo.seed=true`) populates
+> a fresh database for evaluation.
 
 ## Tech stack
 
@@ -76,8 +77,8 @@ com.justin.libradesk
 
 ## Database setup
 
-Create the database and a user, then let the app create the tables on first run
-(the schema script is idempotent):
+Create the database and a user; the app applies the schema on first run via
+Flyway migrations (`src/main/resources/db/migration`):
 
 ```bash
 createdb libradesk
@@ -108,6 +109,13 @@ On first launch the app seeds a default administrator account:
 
 This account is flagged to require a password change on first login, so you will
 be prompted to set a new password before reaching the main screen.
+
+To populate a fresh database with sample data for evaluation, run with
+`DEMO_SEED=true` (it only seeds when the catalog is empty):
+
+```bash
+DEMO_SEED=true mvn javafx:run
+```
 
 ## Test
 
@@ -150,7 +158,14 @@ runtime with `jlink`, and assembles the image with `jpackage` (`--type
 app-image`). JavaFX and the other libraries run from the classpath, so the
 packaged app uses `com.justin.libradesk.Launcher` as its entry point (a launcher
 that does not extend `Application`). Requires JDK 21 with `jlink`/`jpackage` on
-the `PATH`.
+the `PATH`. When `dpkg-deb` and `fakeroot` are present, the script also builds a
+`.deb` installer into `target/jpackage/installer/`.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs `mvn verify -Pit` on every push/PR
+(ubuntu-latest, JDK 21, Maven cache). The runner's preinstalled Docker lets the
+Testcontainers integration tests run unchanged.
 
 > The jlink module list in the script covers the app's needs (JavaFX, JDBC,
 > logging, BCrypt). If you enable TLS to PostgreSQL or other JDK features, run

@@ -24,7 +24,9 @@ integration tests (`repository.jdbc.*IT`) run only under the `it` profile and
 require Docker — they spin up a real PostgreSQL via Testcontainers. Running the
 app needs a reachable PostgreSQL per `application.properties` with the target
 database already created (`createdb libradesk`); the schema is applied at startup
-from `src/main/resources/db/schema.sql`.
+by **Flyway** (`infrastructure/database/FlywayMigrator`) from
+`src/main/resources/db/migration` (the ITs run the same migrator). CI is
+`.github/workflows/ci.yml` (`mvn verify -Pit` on ubuntu).
 
 Two non-obvious test details: the integration base class
 (`repository/jdbc/AbstractRepositoryIT`) pins `api.version=1.41` because the
@@ -132,22 +134,31 @@ Read these to understand the big picture quickly:
   ungated; CATALOG/PATRONS/REPORTS/FINES are LIBRARIAN+, SETTINGS/USERS/AUDIT are
   ADMIN-only.
 - **Packaging** (`scripts/package.sh`) builds a jpackage `app-image` over a slim
-  `jlink` runtime. The app runs JavaFX from the classpath, so the packaged entry
-  point is `com.justin.libradesk.Launcher` (not `LibraDeskApplication`, which
-  extends `Application` and can't be launched from the classpath). `mvn javafx:run`
-  still uses `LibraDeskApplication`.
+  `jlink` runtime, plus a `.deb` installer when `dpkg-deb`/`fakeroot` are present.
+  The app runs JavaFX from the classpath, so the packaged entry point is
+  `com.justin.libradesk.Launcher` (not `LibraDeskApplication`, which extends
+  `Application` and can't be launched from the classpath). `mvn javafx:run` still
+  uses `LibraDeskApplication`.
+- **Schema is Flyway-managed.** Add new changes as `db/migration/Vn__*.sql` (plain
+  SQL, no `IF NOT EXISTS` — Flyway versions them). `V1__baseline.sql` keeps
+  `IF NOT EXISTS` only because it adopts databases created before Flyway;
+  `FlywayMigrator` uses `baselineOnMigrate(true)` for that transition.
+- **Demo data:** `infrastructure/DemoDataSeeder` runs at startup only when
+  `demo.seed=true` and the catalog is empty (dev/demo convenience; never touches
+  real data).
 
 ### Phase status (important when reading skeletons)
 
-Roadmap Phases 6–9 are in progress (see `~/.llm_provider/plans/`). **Done:** Phase 6 —
-role-based access control (`PermissionPolicy` + `AccessControl`, sidebar gating),
-Users management screen, forced password change on first login; Phase 7 — fines
-(charge on overdue return, block-over-threshold, Fines screen), loan renewal, and
-READY-reservation expiry via `MaintenanceScheduler`; Phase 8 — audit-log viewer,
-Reports charts (Bar/Line) and PDF export (OpenPDF). **Remaining:** Phase 9 —
-GitHub Actions CI, jpackage installers, Flyway migrations, demo seed data. When
-extending, follow the implemented repositories/services and the existing feature
-controllers as the reference pattern.
+The full roadmap (Phases 1–9) is complete. Phases 6–9 added: RBAC
+(`PermissionPolicy` + `AccessControl`, sidebar gating), Users management, forced
+first-login password change; fines (charge on overdue return, block-over-threshold,
+Fines screen), loan renewal, READY-reservation expiry via `MaintenanceScheduler`;
+audit-log viewer, Reports charts (Bar/Line) and PDF export (OpenPDF); Flyway
+migrations, GitHub Actions CI, a `.deb` installer, an About dialog, and a demo-data
+seeder. Possible future work (not planned): role-restricted *editing within* screens
+beyond sidebar gating, reservation pickup notifications, and i18n. When extending,
+follow the implemented repositories/services and the existing feature controllers
+as the reference pattern.
 
 ## Language rules
 
