@@ -1,10 +1,12 @@
 package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.domain.enumtype.Permission;
 import com.justin.libradesk.domain.model.User;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.StackPane;
 
@@ -22,6 +24,20 @@ public class MainLayoutController {
     private Label userLabel;
     @FXML
     private StackPane contentArea;
+    @FXML
+    private Button catalogButton;
+    @FXML
+    private Button catalogDataButton;
+    @FXML
+    private Button copiesButton;
+    @FXML
+    private Button patronsButton;
+    @FXML
+    private Button reportsButton;
+    @FXML
+    private Button usersButton;
+    @FXML
+    private Button settingsButton;
 
     @FXML
     private void initialize() {
@@ -29,7 +45,25 @@ public class MainLayoutController {
         if (user != null) {
             userLabel.setText(user.getFullName() + " (" + user.getRole() + ")");
         }
+        applyPermissions();
         onDashboard();
+    }
+
+    /** Hides sidebar entries the current role may not use. */
+    private void applyPermissions() {
+        gate(catalogButton, Permission.CATALOG);
+        gate(catalogDataButton, Permission.CATALOG);
+        gate(copiesButton, Permission.CATALOG);
+        gate(patronsButton, Permission.PATRONS);
+        gate(reportsButton, Permission.REPORTS);
+        gate(usersButton, Permission.USERS);
+        gate(settingsButton, Permission.SETTINGS);
+    }
+
+    private void gate(Button button, Permission permission) {
+        boolean allowed = AccessControl.can(permission);
+        button.setVisible(allowed);
+        button.setManaged(allowed);
     }
 
     @FXML
@@ -70,6 +104,11 @@ public class MainLayoutController {
     @FXML
     private void onReports() {
         load("/fxml/ReportsView.fxml");
+    }
+
+    @FXML
+    private void onUsers() {
+        load("/fxml/UsersView.fxml");
     }
 
     @FXML

@@ -49,6 +49,7 @@ public class SettingsController {
     private void onSave() {
         String actor = AppContext.get().getCurrentUser().getUsername();
         try {
+            AccessControl.require(com.justin.libradesk.domain.enumtype.Permission.SETTINGS);
             for (Map.Entry<String, TextField> entry : fields.entrySet()) {
                 int value = Integer.parseInt(entry.getValue().getText().trim());
                 AppContext.get().settingsService().setInt(entry.getKey(), value, actor);

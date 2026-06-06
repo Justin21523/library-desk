@@ -14,14 +14,15 @@
         <VBox styleClass="sidebar">
             <Label fx:id="userLabel" text="" textFill="WHITE"/>
             <Button text="Dashboard"   onAction="#onDashboard"/>
-            <Button text="Catalog"      onAction="#onCatalog"/>
-            <Button text="Catalog Data" onAction="#onReferenceData"/>
-            <Button text="Book Copies"  onAction="#onCopies"/>
-            <Button text="Patrons"      onAction="#onPatrons"/>
+            <Button fx:id="catalogButton"     text="Catalog"      onAction="#onCatalog"/>
+            <Button fx:id="catalogDataButton" text="Catalog Data" onAction="#onReferenceData"/>
+            <Button fx:id="copiesButton"      text="Book Copies"  onAction="#onCopies"/>
+            <Button fx:id="patronsButton"     text="Patrons"      onAction="#onPatrons"/>
             <Button text="Circulation"  onAction="#onCirculation"/>
             <Button text="Reservations" onAction="#onReservations"/>
-            <Button text="Reports"      onAction="#onReports"/>
-            <Button text="Settings"     onAction="#onSettings"/>
+            <Button fx:id="reportsButton"  text="Reports"   onAction="#onReports"/>
+            <Button fx:id="usersButton"    text="Users"     onAction="#onUsers"/>
+            <Button fx:id="settingsButton" text="Settings"  onAction="#onSettings"/>
             <Button text="Sign out"     onAction="#onLogout"/>
         </VBox>
     </left>
