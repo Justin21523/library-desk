@@ -156,6 +156,13 @@ Read these to understand the big picture quickly:
   summary) added as plain fields (not constructor args, to avoid churn) and a
   `subjectIds` list synced like `authorIds` (`JdbcBookRepository.syncLinks`).
   `util/Isbn` validates/normalises ISBN-10/13.
+- **Copy cataloging** is `infrastructure/marc/LocSruClient`: it queries the LoC SRU
+  service (`loc.sru.url`) with the built-in `HttpClient`, DOM-extracts each
+  MARC21-slim record from the `srw:` envelope, and decodes via
+  `MarcService.fromXmlString`. HTTP is behind an injectable `HttpFetcher` seam so
+  `LocSruClientTest` runs offline against `test/resources/marc/loc-sru-sample.xml`;
+  the Catalog "Search LoC" dialog imports the chosen record through
+  `CatalogService.importMarc`.
 
 ### Phase status (important when reading skeletons)
 
@@ -168,10 +175,10 @@ migrations, GitHub Actions CI, a `.deb` installer, an About dialog, and a demo-d
 seeder.
 
 A **cataloging track** is now in progress on top of that: **Phase 10 (done)** —
-richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util.
-**Planned:** Phase 11 — copy cataloging from the Library of Congress (SRU); Phase 12
-— authority control + DDC/LCC call numbers + spine labels; Phase 13 — OPAC + faceted
-search. BIBFRAME is noted as the longer-term direction. When extending, follow the
+richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util;
+**Phase 11 (done)** — copy cataloging from the Library of Congress (SRU).
+**Planned:** Phase 12 — authority control + DDC/LCC call numbers + spine labels;
+Phase 13 — OPAC + faceted search. BIBFRAME is noted as the longer-term direction. When extending, follow the
 implemented repositories/services and the existing feature controllers as the
 reference pattern.
 
