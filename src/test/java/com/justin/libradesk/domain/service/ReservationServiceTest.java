@@ -20,6 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -43,6 +44,8 @@ class ReservationServiceTest {
     private BookRepository bookRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private SettingsService settingsService;
 
     private ReservationService reservationService;
 
@@ -50,7 +53,7 @@ class ReservationServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.of("UTC")).toInstant(), ZoneId.of("UTC"));
         reservationService = new ReservationService(reservationRepository, patronRepository,
-                bookRepository, auditLogService, clock);
+                bookRepository, auditLogService, settingsService, clock);
     }
 
     private Book book() {
@@ -117,5 +120,22 @@ class ReservationServiceTest {
 
         assertTrue(reservationService.promoteNext(5L, "admin").isEmpty());
         verify(reservationRepository, never()).save(any());
+    }
+
+    @Test
+    void expireStaleReadyMarksExpiredAndPromotesNext() {
+        Reservation stale = new Reservation(7L, 5L, 10L, NOW.minusDays(10), 1, ReservationStatus.READY);
+        when(settingsService.getInt("reservation.ready.expiry.days", 3)).thenReturn(3);
+        when(reservationRepository.findReadyExpired(any())).thenReturn(List.of(stale));
+        when(reservationRepository.findNextPending(5L)).thenReturn(Optional.empty());
+        when(reservationRepository.save(any(Reservation.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        int expired = reservationService.expireStaleReady("system");
+
+        assertEquals(1, expired);
+        ArgumentCaptor<Reservation> captor = ArgumentCaptor.forClass(Reservation.class);
+        verify(reservationRepository).save(captor.capture());
+        assertEquals(ReservationStatus.EXPIRED, captor.getValue().getStatus());
     }
 }

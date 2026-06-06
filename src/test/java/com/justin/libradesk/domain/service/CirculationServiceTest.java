@@ -22,6 +22,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -34,6 +35,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
@@ -63,6 +65,8 @@ class CirculationServiceTest {
     @Mock
     private ReservationService reservationService;
     @Mock
+    private FineService fineService;
+    @Mock
     private SettingsService settingsService;
 
     private CirculationService circulationService;
@@ -71,11 +75,15 @@ class CirculationServiceTest {
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
         // Return the supplied fallback for any setting, matching the bundled defaults
-        // (loan period 14, student limit 5).
+        // (loan period 14, student limit 5, fine threshold 0 = no block).
         lenient().when(settingsService.getInt(anyString(), anyInt()))
                 .thenAnswer(invocation -> invocation.getArgument(1));
+        lenient().when(settingsService.getBigDecimal(anyString(), any()))
+                .thenAnswer(invocation -> invocation.getArgument(1));
+        lenient().when(fineService.unpaidTotal(anyLong())).thenReturn(BigDecimal.ZERO);
         circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, reservationService, settingsService, new BorrowingPolicy(), clock);
+                loanRepository, auditLogService, reservationService, fineService, settingsService,
+                new BorrowingPolicy(), clock);
     }
 
     private Patron patron(PatronStatus status) {
@@ -150,6 +158,53 @@ class CirculationServiceTest {
         when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
 
         assertThrows(ValidationException.class, () -> circulationService.checkout(10L, 20L, "admin"));
+        verify(loanRepository, never()).save(any());
+    }
+
+    @Test
+    void returnByCopyChargesFineWhenOverdue() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.minusDays(1))));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        circulationService.returnByCopy(20L, "admin");
+
+        verify(fineService).chargeOverdue(eq(10L), eq(77L), eq(1L), eq("admin"));
+    }
+
+    @Test
+    void checkoutBlockedWhenUnpaidFinesExceedThreshold() {
+        when(patronRepository.findById(10L)).thenReturn(Optional.of(patron(PatronStatus.ACTIVE)));
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.AVAILABLE)));
+        when(settingsService.getBigDecimal(eq("fine.block.threshold"), any())).thenReturn(new BigDecimal("5"));
+        when(fineService.unpaidTotal(10L)).thenReturn(new BigDecimal("10"));
+
+        assertThrows(ValidationException.class, () -> circulationService.checkout(10L, 20L, "admin"));
+        verify(loanRepository, never()).save(any());
+    }
+
+    @Test
+    void renewExtendsDueDateWhenNoReservation() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.plusDays(1))));
+        when(reservationService.hasPending(5L)).thenReturn(false);
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        LocalDateTime newDue = circulationService.renew(20L, "admin");
+
+        assertEquals(NOW.plusDays(14), newDue);
+        ArgumentCaptor<Loan> captor = ArgumentCaptor.forClass(Loan.class);
+        verify(loanRepository).save(captor.capture());
+        assertEquals(LoanStatus.ACTIVE, captor.getValue().getStatus());
+    }
+
+    @Test
+    void renewRejectedWhenBookIsReserved() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.plusDays(1))));
+        when(reservationService.hasPending(5L)).thenReturn(true);
+
+        assertThrows(ValidationException.class, () -> circulationService.renew(20L, "admin"));
         verify(loanRepository, never()).save(any());
     }
 
