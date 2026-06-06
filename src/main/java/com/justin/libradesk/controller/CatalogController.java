@@ -1,22 +1,34 @@
 package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
+import com.justin.libradesk.domain.model.Category;
+import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.domain.service.CatalogService;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.ComboBox;
+import javafx.scene.control.ListCell;
+import javafx.scene.control.ListView;
+import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
+import javafx.util.StringConverter;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Catalog management: search and list books, and add a new bibliographic
- * record. Delegates to {@code CatalogService}.
+ * Catalog management: search/list books and add new records, including
+ * publisher, category, and authors selected from the reference data.
  */
 public class CatalogController {
 
@@ -29,6 +41,12 @@ public class CatalogController {
     @FXML
     private TextField yearField;
     @FXML
+    private ComboBox<Publisher> publisherCombo;
+    @FXML
+    private ComboBox<Category> categoryCombo;
+    @FXML
+    private ListView<Author> authorsList;
+    @FXML
     private TableView<Book> bookTable;
     @FXML
     private TableColumn<Book, String> titleColumn;
@@ -36,13 +54,37 @@ public class CatalogController {
     private TableColumn<Book, String> isbnColumn;
     @FXML
     private TableColumn<Book, String> yearColumn;
+    @FXML
+    private TableColumn<Book, String> publisherColumn;
+    @FXML
+    private TableColumn<Book, String> categoryColumn;
+
+    private final Map<Long, String> publisherNames = new HashMap<>();
+    private final Map<Long, String> categoryNames = new HashMap<>();
 
     @FXML
     private void initialize() {
+        publisherCombo.setConverter(nameConverter(Publisher::name));
+        categoryCombo.setConverter(nameConverter(Category::name));
+        authorsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        authorsList.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(Author author, boolean empty) {
+                super.updateItem(author, empty);
+                setText(empty || author == null ? null : author.name());
+            }
+        });
+
         titleColumn.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getTitle()));
         isbnColumn.setCellValueFactory(c -> new SimpleStringProperty(nullToDash(c.getValue().getIsbn())));
         yearColumn.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getPublishedYear() == null ? "-" : c.getValue().getPublishedYear().toString()));
+        publisherColumn.setCellValueFactory(c -> new SimpleStringProperty(
+                lookup(publisherNames, c.getValue().getPublisherId())));
+        categoryColumn.setCellValueFactory(c -> new SimpleStringProperty(
+                lookup(categoryNames, c.getValue().getCategoryId())));
+
+        loadReferenceData();
         onShowAll();
     }
 
@@ -53,12 +95,12 @@ public class CatalogController {
             onShowAll();
             return;
         }
-        setBooks(AppContext.get().catalogService().searchByTitle(fragment.trim()));
+        setBooks(catalog().searchByTitle(fragment.trim()));
     }
 
     @FXML
     private void onShowAll() {
-        setBooks(AppContext.get().catalogService().listBooks());
+        setBooks(catalog().listBooks());
     }
 
     @FXML
@@ -66,12 +108,17 @@ public class CatalogController {
         Book book = new Book();
         book.setTitle(text(titleField));
         book.setIsbn(text(isbnField));
-        book.setPublishedYear(parseYear());
+        Publisher publisher = publisherCombo.getValue();
+        Category category = categoryCombo.getValue();
+        book.setPublisherId(publisher == null ? null : publisher.id());
+        book.setCategoryId(category == null ? null : category.id());
+        for (Author author : authorsList.getSelectionModel().getSelectedItems()) {
+            book.getAuthorIds().add(author.id());
+        }
         try {
-            AppContext.get().catalogService().addBook(book, actor());
-            titleField.clear();
-            isbnField.clear();
-            yearField.clear();
+            book.setPublishedYear(parseYear());
+            catalog().addBook(book, actor());
+            clearForm();
             onShowAll();
         } catch (NumberFormatException e) {
             Dialogs.error("Year must be a number.");
@@ -88,7 +135,7 @@ public class CatalogController {
             return;
         }
         try {
-            AppContext.get().csvService().writeBooks(file, AppContext.get().catalogService().listBooks());
+            AppContext.get().csvService().writeBooks(file, catalog().listBooks());
             Dialogs.info("Exported to " + file.getName());
         } catch (RuntimeException e) {
             Dialogs.error("Export failed: " + e.getMessage());
@@ -107,7 +154,7 @@ public class CatalogController {
         try {
             for (Book book : AppContext.get().csvService().readBooks(file)) {
                 try {
-                    AppContext.get().catalogService().addBook(book, actor());
+                    catalog().addBook(book, actor());
                     imported++;
                 } catch (RuntimeException rowError) {
                     errors.add(book.getTitle() + ": " + rowError.getMessage());
@@ -122,9 +169,34 @@ public class CatalogController {
                 + (errors.isEmpty() ? "" : "\n" + String.join("\n", errors)));
     }
 
+    private void loadReferenceData() {
+        List<Publisher> publishers = catalog().listPublishers();
+        List<Category> categories = catalog().listCategories();
+        publisherCombo.setItems(FXCollections.observableArrayList(publishers));
+        categoryCombo.setItems(FXCollections.observableArrayList(categories));
+        authorsList.setItems(FXCollections.observableArrayList(catalog().listAuthors()));
+        publisherNames.clear();
+        publishers.forEach(p -> publisherNames.put(p.id(), p.name()));
+        categoryNames.clear();
+        categories.forEach(c -> categoryNames.put(c.id(), c.name()));
+    }
+
     private Integer parseYear() {
         String value = text(yearField);
         return value == null ? null : Integer.valueOf(value);
+    }
+
+    private void clearForm() {
+        titleField.clear();
+        isbnField.clear();
+        yearField.clear();
+        publisherCombo.getSelectionModel().clearSelection();
+        categoryCombo.getSelectionModel().clearSelection();
+        authorsList.getSelectionModel().clearSelection();
+    }
+
+    private void setBooks(List<Book> books) {
+        bookTable.setItems(FXCollections.observableArrayList(books));
     }
 
     private FileChooser csvChooser(String title, String initialName) {
@@ -137,12 +209,22 @@ public class CatalogController {
         return chooser;
     }
 
-    private Window window() {
-        return bookTable.getScene().getWindow();
+    private static <T> StringConverter<T> nameConverter(java.util.function.Function<T, String> toName) {
+        return new StringConverter<>() {
+            @Override
+            public String toString(T item) {
+                return item == null ? "" : toName.apply(item);
+            }
+
+            @Override
+            public T fromString(String string) {
+                return null;
+            }
+        };
     }
 
-    private void setBooks(java.util.List<Book> books) {
-        bookTable.setItems(FXCollections.observableArrayList(books));
+    private static String lookup(Map<Long, String> names, Long id) {
+        return id == null ? "-" : names.getOrDefault(id, "-");
     }
 
     private static String nullToDash(String value) {
@@ -152,6 +234,14 @@ public class CatalogController {
     private static String text(TextField field) {
         String value = field.getText();
         return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    private static CatalogService catalog() {
+        return AppContext.get().catalogService();
+    }
+
+    private Window window() {
+        return bookTable.getScene().getWindow();
     }
 
     private static String actor() {

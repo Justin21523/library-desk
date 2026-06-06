@@ -15,6 +15,7 @@
             <Label fx:id="userLabel" text="" textFill="WHITE"/>
             <Button text="Dashboard"   onAction="#onDashboard"/>
             <Button text="Catalog"      onAction="#onCatalog"/>
+            <Button text="Catalog Data" onAction="#onReferenceData"/>
             <Button text="Book Copies"  onAction="#onCopies"/>
             <Button text="Patrons"      onAction="#onPatrons"/>
             <Button text="Circulation"  onAction="#onCirculation"/>

@@ -4,6 +4,7 @@ import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.service.SettingsService;
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 import javafx.scene.layout.GridPane;
 
@@ -21,6 +22,12 @@ public class SettingsController {
     private GridPane settingsGrid;
     @FXML
     private Label statusLabel;
+    @FXML
+    private PasswordField currentPasswordField;
+    @FXML
+    private PasswordField newPasswordField;
+    @FXML
+    private PasswordField confirmPasswordField;
 
     private final Map<String, TextField> fields = new LinkedHashMap<>();
 
@@ -49,6 +56,26 @@ public class SettingsController {
             statusLabel.setText("Settings saved.");
         } catch (NumberFormatException e) {
             Dialogs.error("All settings must be whole numbers.");
+        } catch (RuntimeException e) {
+            Dialogs.error(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onChangePassword() {
+        if (!newPasswordField.getText().equals(confirmPasswordField.getText())) {
+            Dialogs.error("New password and confirmation do not match.");
+            return;
+        }
+        Long userId = AppContext.get().getCurrentUser().getId();
+        String actor = AppContext.get().getCurrentUser().getUsername();
+        try {
+            AppContext.get().userService().changePassword(userId,
+                    currentPasswordField.getText(), newPasswordField.getText(), actor);
+            currentPasswordField.clear();
+            newPasswordField.clear();
+            confirmPasswordField.clear();
+            Dialogs.info("Password changed.");
         } catch (RuntimeException e) {
             Dialogs.error(e.getMessage());
         }

@@ -43,6 +43,11 @@ public class MainLayoutController {
     }
 
     @FXML
+    private void onReferenceData() {
+        load("/fxml/ReferenceDataView.fxml");
+    }
+
+    @FXML
     private void onCopies() {
         load("/fxml/CopiesView.fxml");
     }
