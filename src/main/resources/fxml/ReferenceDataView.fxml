@@ -50,6 +50,16 @@
                     <ListView fx:id="categoryList" VBox.vgrow="ALWAYS"/>
                 </VBox>
             </Tab>
+            <Tab text="Subjects">
+                <VBox spacing="8">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                    <HBox spacing="8">
+                        <TextField fx:id="subjectField" promptText="Subject heading"/>
+                        <Button text="Add subject" onAction="#onAddSubject" styleClass="primary-button"/>
+                    </HBox>
+                    <ListView fx:id="subjectList" VBox.vgrow="ALWAYS"/>
+                </VBox>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

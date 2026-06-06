@@ -5,16 +5,21 @@ import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
+import com.justin.libradesk.infrastructure.marc.MarcData;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
 import javafx.stage.FileChooser;
 import javafx.stage.Window;
@@ -47,6 +52,8 @@ public class CatalogController {
     @FXML
     private ListView<Author> authorsList;
     @FXML
+    private ListView<Subject> subjectsList;
+    @FXML
     private TableView<Book> bookTable;
     @FXML
     private TableColumn<Book, String> titleColumn;
@@ -72,6 +79,14 @@ public class CatalogController {
             protected void updateItem(Author author, boolean empty) {
                 super.updateItem(author, empty);
                 setText(empty || author == null ? null : author.name());
+            }
+        });
+        subjectsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        subjectsList.setCellFactory(list -> new ListCell<>() {
+            @Override
+            protected void updateItem(Subject subject, boolean empty) {
+                super.updateItem(subject, empty);
+                setText(empty || subject == null ? null : subject.term());
             }
         });
 
@@ -114,6 +129,9 @@ public class CatalogController {
         book.setCategoryId(category == null ? null : category.id());
         for (Author author : authorsList.getSelectionModel().getSelectedItems()) {
             book.getAuthorIds().add(author.id());
+        }
+        for (Subject subject : subjectsList.getSelectionModel().getSelectedItems()) {
+            book.getSubjectIds().add(subject.id());
         }
         try {
             book.setPublishedYear(parseYear());
@@ -169,12 +187,86 @@ public class CatalogController {
                 + (errors.isEmpty() ? "" : "\n" + String.join("\n", errors)));
     }
 
+    @FXML
+    private void onImportMarc() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Import MARC records");
+        chooser.getExtensionFilters().add(
+                new FileChooser.ExtensionFilter("MARC (.mrc, .xml)", "*.mrc", "*.xml"));
+        File file = chooser.showOpenDialog(window());
+        if (file == null) {
+            return;
+        }
+        int imported = 0;
+        var errors = new ArrayList<String>();
+        try {
+            for (MarcData data : AppContext.get().marcService().read(file)) {
+                try {
+                    AppContext.get().catalogService().importMarc(data, actor());
+                    imported++;
+                } catch (RuntimeException rowError) {
+                    errors.add((data.book().getTitle() == null ? "(untitled)" : data.book().getTitle())
+                            + ": " + rowError.getMessage());
+                }
+            }
+        } catch (RuntimeException e) {
+            Dialogs.error("Import failed: " + e.getMessage());
+            return;
+        }
+        loadReferenceData();
+        onShowAll();
+        Dialogs.info("Imported " + imported + " record(s), skipped " + errors.size() + "."
+                + (errors.isEmpty() ? "" : "\n" + String.join("\n", errors)));
+    }
+
+    @FXML
+    private void onExportMarc() {
+        FileChooser chooser = csvChooser("Export MARCXML", "catalog.xml");
+        chooser.getExtensionFilters().setAll(new FileChooser.ExtensionFilter("MARCXML", "*.xml"));
+        File file = chooser.showSaveDialog(window());
+        if (file == null) {
+            return;
+        }
+        try {
+            AppContext.get().marcService().writeMarcXml(file, catalog().exportMarc());
+            Dialogs.info("Exported to " + file.getName());
+        } catch (RuntimeException e) {
+            Dialogs.error("Export failed: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onViewMarc() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Dialogs.error("Select a book to view its MARC record.");
+            return;
+        }
+        String xml = selected.getMarcXml() != null
+                ? selected.getMarcXml()
+                : AppContext.get().marcService().toXmlString(catalog().toMarcData(selected));
+
+        TextArea area = new TextArea(xml);
+        area.setEditable(false);
+        area.setWrapText(false);
+        area.setPrefRowCount(24);
+        area.setPrefColumnCount(80);
+
+        Dialog<ButtonType> dialog = new Dialog<>();
+        dialog.setTitle("MARC record");
+        dialog.setHeaderText(selected.getTitle());
+        dialog.getDialogPane().setContent(area);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.showAndWait();
+    }
+
     private void loadReferenceData() {
         List<Publisher> publishers = catalog().listPublishers();
         List<Category> categories = catalog().listCategories();
         publisherCombo.setItems(FXCollections.observableArrayList(publishers));
         categoryCombo.setItems(FXCollections.observableArrayList(categories));
         authorsList.setItems(FXCollections.observableArrayList(catalog().listAuthors()));
+        subjectsList.setItems(FXCollections.observableArrayList(catalog().listSubjects()));
         publisherNames.clear();
         publishers.forEach(p -> publisherNames.put(p.id(), p.name()));
         categoryNames.clear();
@@ -193,6 +285,7 @@ public class CatalogController {
         publisherCombo.getSelectionModel().clearSelection();
         categoryCombo.getSelectionModel().clearSelection();
         authorsList.getSelectionModel().clearSelection();
+        subjectsList.getSelectionModel().clearSelection();
     }
 
     private void setBooks(List<Book> books) {

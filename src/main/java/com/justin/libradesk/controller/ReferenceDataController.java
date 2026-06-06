@@ -4,6 +4,7 @@ import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -28,6 +29,10 @@ public class ReferenceDataController {
     private TextField categoryField;
     @FXML
     private ListView<String> categoryList;
+    @FXML
+    private TextField subjectField;
+    @FXML
+    private ListView<String> subjectList;
 
     @FXML
     private void initialize() {
@@ -49,6 +54,11 @@ public class ReferenceDataController {
         add(categoryField, () -> catalog().addCategory(categoryField.getText(), actor()));
     }
 
+    @FXML
+    private void onAddSubject() {
+        add(subjectField, () -> catalog().addSubject(subjectField.getText(), actor()));
+    }
+
     private void add(TextField field, Runnable action) {
         try {
             action.run();
@@ -67,6 +77,8 @@ public class ReferenceDataController {
                 catalog.listPublishers().stream().map(Publisher::name).toList()));
         categoryList.setItems(FXCollections.observableArrayList(
                 catalog.listCategories().stream().map(Category::name).toList()));
+        subjectList.setItems(FXCollections.observableArrayList(
+                catalog.listSubjects().stream().map(Subject::term).toList()));
     }
 
     private static CatalogService catalog() {

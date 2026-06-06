@@ -27,6 +27,13 @@
         <Button text="Import CSV" onAction="#onImportCsv"/>
     </HBox>
 
+    <HBox spacing="8">
+        <Label text="MARC:"/>
+        <Button text="Import MARC" onAction="#onImportMarc"/>
+        <Button text="Export MARC" onAction="#onExportMarc"/>
+        <Button text="View MARC" onAction="#onViewMarc"/>
+    </HBox>
+
     <VBox spacing="6">
         <HBox spacing="8">
             <TextField fx:id="titleField" promptText="Title"/>
@@ -37,8 +44,10 @@
             <Button text="Add book" onAction="#onAddBook" styleClass="primary-button"/>
         </HBox>
         <HBox spacing="8">
-            <Label text="Authors (multi-select):"/>
-            <ListView fx:id="authorsList" prefHeight="70" prefWidth="260"/>
+            <Label text="Authors:"/>
+            <ListView fx:id="authorsList" prefHeight="70" prefWidth="240"/>
+            <Label text="Subjects:"/>
+            <ListView fx:id="subjectsList" prefHeight="70" prefWidth="240"/>
         </HBox>
     </VBox>
 
