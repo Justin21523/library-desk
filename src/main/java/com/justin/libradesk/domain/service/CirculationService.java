@@ -8,6 +8,7 @@ import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Loan;
 import com.justin.libradesk.domain.model.Patron;
 import com.justin.libradesk.dto.LoanResult;
+import com.justin.libradesk.dto.ReturnResult;
 import com.justin.libradesk.repository.BookCopyRepository;
 import com.justin.libradesk.repository.LoanRepository;
 import com.justin.libradesk.repository.PatronRepository;
@@ -100,12 +101,44 @@ public class CirculationService {
         return new LoanResult(savedLoan.getId(), copyId, patronId, dueAt);
     }
 
+    /**
+     * Checks a copy back in: closes its open loan and makes the copy loanable
+     * again.
+     *
+     * @param copyId the physical copy being returned
+     * @param actor  username of the staff member performing the check-in
+     * @return a summary of the closed loan, including whether it was overdue
+     * @throws ValidationException if the copy is missing or has no active loan
+     */
+    public ReturnResult returnByCopy(Long copyId, String actor) {
+        BookCopy copy = bookCopyRepository.findById(copyId)
+                .orElseThrow(() -> new ValidationException("Book copy not found: " + copyId));
+        Loan loan = loanRepository.findActiveByCopy(copyId)
+                .orElseThrow(() -> new ValidationException("No active loan for copy: " + copyId));
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        boolean wasOverdue = loan.isOverdue(now);
+
+        loan.setReturnedAt(now);
+        loan.setStatus(LoanStatus.RETURNED);
+        loanRepository.save(loan);
+
+        copy.setStatus(CopyStatus.AVAILABLE);
+        bookCopyRepository.save(copy);
+
+        auditLogService.record(actor, "LOAN_RETURNED", "Loan", loan.getId(),
+                "copy=" + copyId + (wasOverdue ? " (overdue)" : ""));
+        log.info("Loan {} returned: copy={} overdue={}", loan.getId(), copyId, wasOverdue);
+
+        return new ReturnResult(loan.getId(), copyId, now, wasOverdue);
+    }
+
     /** Resolves the configured borrowing limit for a patron type. */
     private int borrowLimitFor(PatronType type) {
         String key = "borrow.limit." + type.name().toLowerCase();
         return config.getInt(key);
     }
 
-    // TODO(phase2): return workflow (mark loan RETURNED, copy AVAILABLE, trigger
-    // next reservation) and overdue detection sweep.
+    // TODO(phase2+): on return, promote the next reservation to READY; add an
+    // overdue-detection sweep over loanRepository.findOverdue().
 }
