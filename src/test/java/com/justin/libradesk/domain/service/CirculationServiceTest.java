@@ -7,7 +7,9 @@ import com.justin.libradesk.domain.enumtype.PatronStatus;
 import com.justin.libradesk.domain.enumtype.PatronType;
 import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Loan;
+import com.justin.libradesk.domain.enumtype.ReservationStatus;
 import com.justin.libradesk.domain.model.Patron;
+import com.justin.libradesk.domain.model.Reservation;
 import com.justin.libradesk.dto.LoanResult;
 import com.justin.libradesk.dto.ReturnResult;
 import com.justin.libradesk.repository.BookCopyRepository;
@@ -55,6 +57,8 @@ class CirculationServiceTest {
     private LoanRepository loanRepository;
     @Mock
     private AuditLogService auditLogService;
+    @Mock
+    private ReservationService reservationService;
 
     private CirculationService circulationService;
 
@@ -63,7 +67,7 @@ class CirculationServiceTest {
         Clock clock = Clock.fixed(NOW.atZone(ZONE).toInstant(), ZONE);
         AppConfig config = AppConfig.load();
         circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, new BorrowingPolicy(), config, clock);
+                loanRepository, auditLogService, reservationService, new BorrowingPolicy(), config, clock);
     }
 
     private Patron patron(PatronStatus status) {
@@ -166,6 +170,7 @@ class CirculationServiceTest {
         assertEquals(77L, result.loanId());
         assertEquals(NOW, result.returnedAt());
         assertFalse(result.wasOverdue());
+        assertFalse(result.heldForReservation()); // no reservation waiting (promoteNext returns empty)
 
         ArgumentCaptor<Loan> loanCaptor = ArgumentCaptor.forClass(Loan.class);
         verify(loanRepository).save(loanCaptor.capture());
@@ -177,6 +182,23 @@ class CirculationServiceTest {
         assertEquals(CopyStatus.AVAILABLE, copyCaptor.getValue().getStatus());
 
         verify(auditLogService).record(eq("admin"), eq("LOAN_RETURNED"), eq("Loan"), eq(77L), any());
+    }
+
+    @Test
+    void returnByCopyHoldsCopyForWaitingReservation() {
+        when(bookCopyRepository.findById(20L)).thenReturn(Optional.of(copy(CopyStatus.ON_LOAN)));
+        when(loanRepository.findActiveByCopy(20L)).thenReturn(Optional.of(activeLoan(NOW.plusDays(5))));
+        when(loanRepository.save(any(Loan.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        // copy(...) belongs to book 5; a patron is waiting in that book's queue.
+        when(reservationService.promoteNext(5L, "admin")).thenReturn(
+                Optional.of(new Reservation(1L, 5L, 99L, NOW, 1, ReservationStatus.READY)));
+
+        ReturnResult result = circulationService.returnByCopy(20L, "admin");
+
+        assertTrue(result.heldForReservation());
+        ArgumentCaptor<BookCopy> copyCaptor = ArgumentCaptor.forClass(BookCopy.class);
+        verify(bookCopyRepository).save(copyCaptor.capture());
+        assertEquals(CopyStatus.RESERVED, copyCaptor.getValue().getStatus());
     }
 
     @Test
