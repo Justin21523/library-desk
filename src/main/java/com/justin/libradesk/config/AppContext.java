@@ -16,6 +16,7 @@ import com.justin.libradesk.domain.service.UserService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.export.CsvService;
 import com.justin.libradesk.infrastructure.export.PdfService;
+import com.justin.libradesk.infrastructure.marc.LocSruClient;
 import com.justin.libradesk.infrastructure.marc.MarcService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
@@ -61,6 +62,7 @@ public final class AppContext implements AutoCloseable {
     private final CsvService csvService;
     private final PdfService pdfService;
     private final MarcService marcService;
+    private final LocSruClient locSruClient;
     private final AuditLogService auditLogService;
 
     private User currentUser;
@@ -104,6 +106,7 @@ public final class AppContext implements AutoCloseable {
         this.csvService = new CsvService();
         this.pdfService = new PdfService();
         this.marcService = new MarcService();
+        this.locSruClient = new LocSruClient(marcService, config);
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -176,6 +179,10 @@ public final class AppContext implements AutoCloseable {
 
     public MarcService marcService() {
         return marcService;
+    }
+
+    public LocSruClient locSruClient() {
+        return locSruClient;
     }
 
     public AuditLogService auditLogService() {
