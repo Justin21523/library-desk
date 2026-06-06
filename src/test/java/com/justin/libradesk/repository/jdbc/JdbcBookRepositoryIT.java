@@ -92,4 +92,38 @@ class JdbcBookRepositoryIT extends AbstractRepositoryIT {
 
         assertTrue(repository.findById(saved.getId()).isEmpty());
     }
+
+    @Test
+    void persistsMarcFieldsAndSubjectLinks() {
+        long subjectId = insertSubject("Java (Computer program language)");
+        Book book = newBook("978-9", "Effective Java");
+        book.setEdition("3rd ed.");
+        book.setExtent("xvi, 412 pages");
+        book.setLanguage("eng");
+        book.setControlNumber("ocm12345");
+        book.getSubjectIds().add(subjectId);
+
+        Book saved = repository.save(book);
+
+        Book found = repository.findById(saved.getId()).orElseThrow();
+        assertEquals("3rd ed.", found.getEdition());
+        assertEquals("eng", found.getLanguage());
+        assertEquals("ocm12345", found.getControlNumber());
+        assertEquals(List.of(subjectId), found.getSubjectIds());
+    }
+
+    private long insertSubject(String term) {
+        try (var c = databaseManager.getConnection();
+             var ps = c.prepareStatement(
+                     "INSERT INTO subjects (term) VALUES (?)", java.sql.Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, term);
+            ps.executeUpdate();
+            try (var keys = ps.getGeneratedKeys()) {
+                keys.next();
+                return keys.getLong("id");
+            }
+        } catch (java.sql.SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
