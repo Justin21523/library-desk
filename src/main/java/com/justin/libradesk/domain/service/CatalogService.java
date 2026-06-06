@@ -1,10 +1,16 @@
 package com.justin.libradesk.domain.service;
 
 import com.justin.libradesk.domain.enumtype.CopyStatus;
+import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
+import com.justin.libradesk.domain.model.Category;
+import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.repository.AuthorRepository;
 import com.justin.libradesk.repository.BookCopyRepository;
 import com.justin.libradesk.repository.BookRepository;
+import com.justin.libradesk.repository.CategoryRepository;
+import com.justin.libradesk.repository.PublisherRepository;
 import com.justin.libradesk.validation.ValidationException;
 
 import java.time.Clock;
@@ -20,15 +26,24 @@ public class CatalogService {
 
     private final BookRepository bookRepository;
     private final BookCopyRepository bookCopyRepository;
+    private final AuthorRepository authorRepository;
+    private final PublisherRepository publisherRepository;
+    private final CategoryRepository categoryRepository;
     private final AuditLogService auditLogService;
     private final Clock clock;
 
     public CatalogService(BookRepository bookRepository,
                           BookCopyRepository bookCopyRepository,
+                          AuthorRepository authorRepository,
+                          PublisherRepository publisherRepository,
+                          CategoryRepository categoryRepository,
                           AuditLogService auditLogService,
                           Clock clock) {
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
+        this.authorRepository = authorRepository;
+        this.publisherRepository = publisherRepository;
+        this.categoryRepository = categoryRepository;
         this.auditLogService = auditLogService;
         this.clock = clock;
     }
@@ -113,6 +128,45 @@ public class CatalogService {
 
     public Optional<BookCopy> findCopyByBarcode(String barcode) {
         return bookCopyRepository.findByBarcode(barcode);
+    }
+
+    // --- Reference data (authors / publishers / categories) ---
+
+    public Author addAuthor(String name, String actor) {
+        Author saved = authorRepository.save(new Author(null, requireName(name)));
+        auditLogService.record(actor, "AUTHOR_ADDED", "Author", saved.id(), saved.name());
+        return saved;
+    }
+
+    public List<Author> listAuthors() {
+        return authorRepository.findAll();
+    }
+
+    public Publisher addPublisher(String name, String actor) {
+        Publisher saved = publisherRepository.save(new Publisher(null, requireName(name)));
+        auditLogService.record(actor, "PUBLISHER_ADDED", "Publisher", saved.id(), saved.name());
+        return saved;
+    }
+
+    public List<Publisher> listPublishers() {
+        return publisherRepository.findAll();
+    }
+
+    public Category addCategory(String name, String actor) {
+        Category saved = categoryRepository.save(new Category(null, requireName(name)));
+        auditLogService.record(actor, "CATEGORY_ADDED", "Category", saved.id(), saved.name());
+        return saved;
+    }
+
+    public List<Category> listCategories() {
+        return categoryRepository.findAll();
+    }
+
+    private static String requireName(String name) {
+        if (isBlank(name)) {
+            throw new ValidationException("Name is required");
+        }
+        return name.trim();
     }
 
     private static boolean isBlank(String value) {
