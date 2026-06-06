@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<searchRetrieveResponse xmlns="http://www.loc.gov/zing/srw/">
+    <version>1.1</version>
+    <numberOfRecords>1</numberOfRecords>
+    <records>
+        <record>
+            <recordSchema>info:srw/schema/1/marcxml-v1.1</recordSchema>
+            <recordPacking>xml</recordPacking>
+            <recordData>
+                <record xmlns="http://www.loc.gov/MARC21/slim">
+                    <leader>00000nam a2200000 a 4500</leader>
+                    <controlfield tag="001">2017302585</controlfield>
+                    <datafield tag="020" ind1=" " ind2=" ">
+                        <subfield code="a">9780134685991</subfield>
+                    </datafield>
+                    <datafield tag="100" ind1="1" ind2=" ">
+                        <subfield code="a">Bloch, Joshua.</subfield>
+                    </datafield>
+                    <datafield tag="245" ind1="1" ind2="0">
+                        <subfield code="a">Effective Java /</subfield>
+                        <subfield code="c">Joshua Bloch.</subfield>
+                    </datafield>
+                    <datafield tag="250" ind1=" " ind2=" ">
+                        <subfield code="a">Third edition.</subfield>
+                    </datafield>
+                    <datafield tag="264" ind1=" " ind2="1">
+                        <subfield code="a">Boston :</subfield>
+                        <subfield code="b">Addison-Wesley,</subfield>
+                        <subfield code="c">2018.</subfield>
+                    </datafield>
+                    <datafield tag="650" ind1=" " ind2="0">
+                        <subfield code="a">Java (Computer program language)</subfield>
+                    </datafield>
+                </record>
+            </recordData>
+        </record>
+    </records>
+</searchRetrieveResponse>
