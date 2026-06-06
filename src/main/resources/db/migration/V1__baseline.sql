@@ -1,6 +1,6 @@
--- LibraDesk schema (PostgreSQL). Idempotent: safe to run on every startup.
--- All identifiers are lower_snake_case. Timestamps use native TIMESTAMP.
--- Requires the target database to already exist (e.g. createdb libradesk).
+-- LibraDesk baseline schema (PostgreSQL), managed by Flyway.
+-- IF NOT EXISTS / ADD COLUMN IF NOT EXISTS are kept so this baseline also adopts
+-- databases created by the pre-Flyway startup initializer without error.
 
 -- Staff accounts. Role drives permissions (see UserRole enum).
 CREATE TABLE IF NOT EXISTS users (
@@ -13,8 +13,6 @@ CREATE TABLE IF NOT EXISTS users (
     must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at    TIMESTAMP NOT NULL
 );
-
--- Upgrade existing databases created before this column was added.
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS publishers (
@@ -102,8 +100,6 @@ CREATE TABLE IF NOT EXISTS reservations (
     FOREIGN KEY (book_id)   REFERENCES books(id),
     FOREIGN KEY (patron_id) REFERENCES patrons(id)
 );
-
--- Upgrade existing databases created before ready_at was added.
 ALTER TABLE reservations ADD COLUMN IF NOT EXISTS ready_at TIMESTAMP;
 
 -- Monetary penalties for overdue returns.
@@ -118,7 +114,6 @@ CREATE TABLE IF NOT EXISTS fines (
     FOREIGN KEY (patron_id) REFERENCES patrons(id),
     FOREIGN KEY (loan_id)   REFERENCES loans(id)
 );
-
 CREATE INDEX IF NOT EXISTS idx_fines_patron ON fines(patron_id);
 CREATE INDEX IF NOT EXISTS idx_fines_status ON fines(status);
 

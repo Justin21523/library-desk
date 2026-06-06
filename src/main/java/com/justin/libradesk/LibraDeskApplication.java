@@ -5,8 +5,9 @@ import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.controller.ViewNavigator;
 import com.justin.libradesk.domain.enumtype.UserRole;
 import com.justin.libradesk.domain.model.User;
+import com.justin.libradesk.infrastructure.DemoDataSeeder;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
-import com.justin.libradesk.infrastructure.database.SchemaInitializer;
+import com.justin.libradesk.infrastructure.database.FlywayMigrator;
 import com.justin.libradesk.infrastructure.scheduling.MaintenanceScheduler;
 import com.justin.libradesk.repository.UserRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
@@ -29,6 +30,9 @@ public class LibraDeskApplication extends Application {
 
     private static final Logger log = LoggerFactory.getLogger(LibraDeskApplication.class);
 
+    /** Application version, shown in the About dialog. */
+    public static final String VERSION = "0.1.0";
+
     private MaintenanceScheduler maintenanceScheduler;
 
     @Override
@@ -36,10 +40,11 @@ public class LibraDeskApplication extends Application {
         try {
             AppConfig config = AppConfig.load();
             DatabaseManager databaseManager = new DatabaseManager(config);
-            new SchemaInitializer(databaseManager).initialize();
+            new FlywayMigrator(databaseManager).migrate();
             seedDefaultAdmin(databaseManager);
 
             AppContext context = AppContext.initialize(config, databaseManager);
+            seedDemoDataIfRequested(context);
 
             long sweepMinutes = context.settingsService().getInt("overdue.sweep.minutes", 60);
             maintenanceScheduler = new MaintenanceScheduler(context.circulationService(),
@@ -86,6 +91,13 @@ public class LibraDeskApplication extends Application {
         users.save(admin);
         log.warn("Seeded default admin account (username 'admin', password 'admin'). "
                 + "You will be required to change it on first login.");
+    }
+
+    /** Loads sample data when {@code demo.seed=true} (dev/demo only). */
+    private void seedDemoDataIfRequested(AppContext context) {
+        if (Boolean.parseBoolean(context.config().getString("demo.seed", "false"))) {
+            new DemoDataSeeder(context).seedIfEmpty();
+        }
     }
 
     private void showFatalError(Throwable error) {

@@ -2,7 +2,7 @@ package com.justin.libradesk.repository.jdbc;
 
 import com.justin.libradesk.config.AppConfig;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
-import com.justin.libradesk.infrastructure.database.SchemaInitializer;
+import com.justin.libradesk.infrastructure.database.FlywayMigrator;
 import org.junit.jupiter.api.BeforeEach;
 import org.testcontainers.containers.PostgreSQLContainer;
 
@@ -50,7 +50,7 @@ abstract class AbstractRepositoryIT {
         props.setProperty("db.pool.minIdle", "1");
 
         databaseManager = new DatabaseManager(AppConfig.fromProperties(props));
-        new SchemaInitializer(databaseManager).initialize();
+        new FlywayMigrator(databaseManager).migrate();
         // Container is intentionally not stopped here; it is reclaimed on JVM exit
         // (Testcontainers' Ryuk also removes it).
     }
