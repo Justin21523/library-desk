@@ -29,16 +29,43 @@ jlink \
   --strip-debug --no-header-files --no-man-pages --compress=zip-6 \
   --output "${RUNTIME}"
 
+VENDOR="LibraDesk"
+ICON_OPT=()
+if [[ -f "scripts/libradesk.png" ]]; then
+  ICON_OPT=(--icon "scripts/libradesk.png")
+fi
+
 echo ">> Building the application image with jpackage"
 jpackage \
   --type app-image \
   --name LibraDesk \
   --app-version "${APP_VERSION}" \
+  --vendor "${VENDOR}" \
+  "${ICON_OPT[@]}" \
   --input "${INPUT}" \
   --main-jar "${MAIN_JAR}" \
   --main-class com.justin.libradesk.Launcher \
   --runtime-image "${RUNTIME}" \
   --java-options "-Dfile.encoding=UTF-8" \
   --dest "${DIST}/image"
+echo ">> App image: ${DIST}/image/LibraDesk (run bin/LibraDesk)"
 
-echo ">> Done. Launch with: ${DIST}/image/LibraDesk/bin/LibraDesk"
+# Optional native installer. A .deb needs dpkg-deb + fakeroot; .rpm needs rpmbuild.
+if command -v dpkg-deb >/dev/null 2>&1 && command -v fakeroot >/dev/null 2>&1; then
+  echo ">> Building .deb installer"
+  jpackage \
+    --type deb \
+    --name LibraDesk \
+    --app-version "${APP_VERSION}" \
+    --vendor "${VENDOR}" \
+    "${ICON_OPT[@]}" \
+    --input "${INPUT}" \
+    --main-jar "${MAIN_JAR}" \
+    --main-class com.justin.libradesk.Launcher \
+    --runtime-image "${RUNTIME}" \
+    --java-options "-Dfile.encoding=UTF-8" \
+    --dest "${DIST}/installer"
+  echo ">> Installer written to ${DIST}/installer"
+else
+  echo ">> Skipping .deb installer (dpkg-deb/fakeroot not found). The app image above is ready to run."
+fi
