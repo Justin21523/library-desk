@@ -33,6 +33,8 @@ public class MainLayoutController {
     @FXML
     private Button patronsButton;
     @FXML
+    private Button finesButton;
+    @FXML
     private Button reportsButton;
     @FXML
     private Button usersButton;
@@ -55,6 +57,7 @@ public class MainLayoutController {
         gate(catalogDataButton, Permission.CATALOG);
         gate(copiesButton, Permission.CATALOG);
         gate(patronsButton, Permission.PATRONS);
+        gate(finesButton, Permission.FINES);
         gate(reportsButton, Permission.REPORTS);
         gate(usersButton, Permission.USERS);
         gate(settingsButton, Permission.SETTINGS);
@@ -99,6 +102,11 @@ public class MainLayoutController {
     @FXML
     private void onReservations() {
         load("/fxml/ReservationsView.fxml");
+    }
+
+    @FXML
+    private void onFines() {
+        load("/fxml/FinesView.fxml");
     }
 
     @FXML

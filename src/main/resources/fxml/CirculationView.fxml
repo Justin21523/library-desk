@@ -31,5 +31,13 @@
         <Button text="Return" onAction="#onReturn"/>
     </HBox>
 
+    <Separator/>
+
+    <Label text="Renew" styleClass="section-title"/>
+    <HBox spacing="8">
+        <TextField fx:id="renewBarcodeField" promptText="Copy barcode"/>
+        <Button text="Renew" onAction="#onRenew"/>
+    </HBox>
+
     <Label fx:id="resultLabel" wrapText="true"/>
 </VBox>

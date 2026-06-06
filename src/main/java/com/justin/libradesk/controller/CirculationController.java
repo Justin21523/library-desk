@@ -25,6 +25,8 @@ public class CirculationController {
     @FXML
     private TextField returnBarcodeField;
     @FXML
+    private TextField renewBarcodeField;
+    @FXML
     private Label resultLabel;
 
     @FXML
@@ -84,6 +86,27 @@ public class CirculationController {
             }
             resultLabel.setText(message.toString());
             returnBarcodeField.clear();
+        } catch (RuntimeException e) {
+            Dialogs.error(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onRenew() {
+        String barcode = text(renewBarcodeField);
+        if (barcode == null) {
+            Dialogs.error("Enter a copy barcode to renew.");
+            return;
+        }
+        Optional<BookCopy> copy = AppContext.get().catalogService().findCopyByBarcode(barcode);
+        if (copy.isEmpty()) {
+            Dialogs.error("No copy with barcode: " + barcode);
+            return;
+        }
+        try {
+            var newDue = AppContext.get().circulationService().renew(copy.get().getId(), actor());
+            resultLabel.setText("Renewed copy " + barcode + ". New due date " + newDue.toLocalDate() + ".");
+            renewBarcodeField.clear();
         } catch (RuntimeException e) {
             Dialogs.error(e.getMessage());
         }

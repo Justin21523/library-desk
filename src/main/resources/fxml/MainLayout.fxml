@@ -20,6 +20,7 @@
             <Button fx:id="patronsButton"     text="Patrons"      onAction="#onPatrons"/>
             <Button text="Circulation"  onAction="#onCirculation"/>
             <Button text="Reservations" onAction="#onReservations"/>
+            <Button fx:id="finesButton"    text="Fines"     onAction="#onFines"/>
             <Button fx:id="reportsButton"  text="Reports"   onAction="#onReports"/>
             <Button fx:id="usersButton"    text="Users"     onAction="#onUsers"/>
             <Button fx:id="settingsButton" text="Settings"  onAction="#onSettings"/>
