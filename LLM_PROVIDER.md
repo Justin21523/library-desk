@@ -108,10 +108,16 @@ Read these to understand the big picture quickly:
   in `application.properties`, not the integer-only Settings grid).
 - **Loan renewal** is `CirculationService.renew`: extends the due date one period
   unless the book has a pending reservation (`ReservationService.hasPending`).
-- **CSV** lives in `infrastructure/export/CsvService` (Apache Commons CSV). It only
-  maps between CSV and domain objects; the controllers loop over the parsed rows
-  and call the services, catching per-row `ValidationException`s to build an
-  import summary.
+- **CSV/PDF export** live in `infrastructure/export/` (`CsvService` via Apache
+  Commons CSV, `PdfService` via OpenPDF). Both only map domain objects to a file;
+  controllers gather the data and call them. CSV import loops over parsed rows and
+  calls the services, catching per-row `ValidationException`s to build a summary.
+- **Reports aggregates** (`ReportsService.mostBorrowed/activeLoansByPatronType/
+  loansPerDay`) are computed in-memory from the repositories — the same approach as
+  `DashboardService` — so there is no bespoke aggregate SQL; they return small DTO
+  records (`NamedCount`, `DailyCount`) that the Reports charts bind to.
+- **Audit viewer** reads `AuditLogService.recent()` and filters in-memory; it is the
+  only reader of the audit trail (everything else only writes via `record(...)`).
 - **Passwords** go through `util/PasswordHasher` (BCrypt). It still verifies
   legacy SHA-256 hashes so existing accounts work, and `AuthService` rehashes them
   to BCrypt on the next successful login (`needsRehash`). Account operations
@@ -137,8 +143,8 @@ Roadmap Phases 6–9 are in progress (see `~/.llm_provider/plans/`). **Done:** P
 role-based access control (`PermissionPolicy` + `AccessControl`, sidebar gating),
 Users management screen, forced password change on first login; Phase 7 — fines
 (charge on overdue return, block-over-threshold, Fines screen), loan renewal, and
-READY-reservation expiry via `MaintenanceScheduler`. **Remaining:** Phase 8 —
-audit-log viewer, richer reports + JavaFX charts, PDF export (OpenPDF); Phase 9 —
+READY-reservation expiry via `MaintenanceScheduler`; Phase 8 — audit-log viewer,
+Reports charts (Bar/Line) and PDF export (OpenPDF). **Remaining:** Phase 9 —
 GitHub Actions CI, jpackage installers, Flyway migrations, demo seed data. When
 extending, follow the implemented repositories/services and the existing feature
 controllers as the reference pattern.
