@@ -8,6 +8,11 @@ import javafx.fxml.FXML;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.stage.FileChooser;
+import javafx.stage.Window;
+
+import java.io.File;
+import java.util.ArrayList;
 
 /**
  * Catalog management: search and list books, and add a new bibliographic
@@ -75,9 +80,65 @@ public class CatalogController {
         }
     }
 
+    @FXML
+    private void onExportCsv() {
+        FileChooser chooser = csvChooser("Export books", "books.csv");
+        File file = chooser.showSaveDialog(window());
+        if (file == null) {
+            return;
+        }
+        try {
+            AppContext.get().csvService().writeBooks(file, AppContext.get().catalogService().listBooks());
+            Dialogs.info("Exported to " + file.getName());
+        } catch (RuntimeException e) {
+            Dialogs.error("Export failed: " + e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onImportCsv() {
+        FileChooser chooser = csvChooser("Import books", null);
+        File file = chooser.showOpenDialog(window());
+        if (file == null) {
+            return;
+        }
+        int imported = 0;
+        var errors = new ArrayList<String>();
+        try {
+            for (Book book : AppContext.get().csvService().readBooks(file)) {
+                try {
+                    AppContext.get().catalogService().addBook(book, actor());
+                    imported++;
+                } catch (RuntimeException rowError) {
+                    errors.add(book.getTitle() + ": " + rowError.getMessage());
+                }
+            }
+        } catch (RuntimeException e) {
+            Dialogs.error("Import failed: " + e.getMessage());
+            return;
+        }
+        onShowAll();
+        Dialogs.info("Imported " + imported + " book(s), skipped " + errors.size() + "."
+                + (errors.isEmpty() ? "" : "\n" + String.join("\n", errors)));
+    }
+
     private Integer parseYear() {
         String value = text(yearField);
         return value == null ? null : Integer.valueOf(value);
+    }
+
+    private FileChooser csvChooser(String title, String initialName) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle(title);
+        if (initialName != null) {
+            chooser.setInitialFileName(initialName);
+        }
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
+        return chooser;
+    }
+
+    private Window window() {
+        return bookTable.getScene().getWindow();
     }
 
     private void setBooks(java.util.List<Book> books) {

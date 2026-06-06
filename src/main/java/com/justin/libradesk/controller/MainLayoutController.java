@@ -64,12 +64,12 @@ public class MainLayoutController {
 
     @FXML
     private void onReports() {
-        placeholder("Reports");
+        load("/fxml/ReportsView.fxml");
     }
 
     @FXML
     private void onSettings() {
-        placeholder("Settings");
+        load("/fxml/SettingsView.fxml");
     }
 
     @FXML
@@ -85,10 +85,5 @@ public class MainLayoutController {
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to load view: " + fxmlResource, e);
         }
-    }
-
-    private void placeholder(String section) {
-        // Reports and Settings are delivered in a later phase.
-        contentArea.getChildren().setAll(new Label(section + " — coming soon"));
     }
 }

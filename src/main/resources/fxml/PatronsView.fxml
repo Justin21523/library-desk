@@ -39,5 +39,7 @@
     <HBox spacing="8">
         <Button text="Suspend selected" onAction="#onSuspend"/>
         <Button text="Refresh" onAction="#onRefresh"/>
+        <Button text="Export CSV" onAction="#onExportCsv"/>
+        <Button text="Import CSV" onAction="#onImportCsv"/>
     </HBox>
 </VBox>

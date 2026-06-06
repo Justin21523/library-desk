@@ -21,6 +21,8 @@
         <TextField fx:id="searchField" promptText="Search title..."/>
         <Button text="Search" onAction="#onSearch"/>
         <Button text="Show all" onAction="#onShowAll"/>
+        <Button text="Export CSV" onAction="#onExportCsv"/>
+        <Button text="Import CSV" onAction="#onImportCsv"/>
     </HBox>
 
     <HBox spacing="8">
