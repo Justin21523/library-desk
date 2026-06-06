@@ -12,7 +12,12 @@ mvn -Dtest=BorrowingPolicyTest test            # run one test class
 mvn -Dtest=CirculationServiceTest#checkoutRejectsSuspendedPatron test   # run one test method
 mvn compile                                    # compile only
 mvn clean package                              # build a jar
+./scripts/package.sh                           # native app image via jlink + jpackage
 ```
+
+Note: incremental Maven builds have occasionally dropped a synthetic class
+(e.g. an enum-switch `$1`) and caused a spurious `NoClassDefFoundError` in tests;
+`mvn clean test` resolves it.
 
 Unit tests (`domain.service`) do **not** require a database. The repository
 integration tests (`repository.jdbc.*IT`) run only under the `it` profile and
@@ -95,19 +100,28 @@ Read these to understand the big picture quickly:
   maps between CSV and domain objects; the controllers loop over the parsed rows
   and call the services, catching per-row `ValidationException`s to build an
   import summary.
+- **Passwords** go through `util/PasswordHasher` (BCrypt). It still verifies
+  legacy SHA-256 hashes so existing accounts work, and `AuthService` rehashes them
+  to BCrypt on the next successful login (`needsRehash`). Account operations
+  (change password, create staff) live in `UserService`.
+- **Packaging** (`scripts/package.sh`) builds a jpackage `app-image` over a slim
+  `jlink` runtime. The app runs JavaFX from the classpath, so the packaged entry
+  point is `com.justin.libradesk.Launcher` (not `LibraDeskApplication`, which
+  extends `Application` and can't be launched from the classpath). `mvn javafx:run`
+  still uses `LibraDeskApplication`.
 
 ### Phase status (important when reading skeletons)
 
-Phase 4 is complete. **Fully implemented:** every JDBC repository (incl.
-`JdbcSettingsRepository`); all services (`Auth`, `Patron`, `Catalog`,
-`Circulation` with `checkout`/`returnByCopy`/`markOverdueLoans`, `Reservation`,
-`Dashboard`, `Reports`, `Settings`, `AuditLog`); CSV via `CsvService`; the overdue
-`OverdueScheduler`; and all nine screens (Dashboard, Catalog, Book Copies,
-Patrons, Circulation, Reservations, Reports, Settings — the last two were the
-final placeholders). **Still deferred:** authentication hardening (passwords are
-SHA-256 in `util/PasswordHasher` — see its TODO), an author/publisher/category
-management UI (`book_authors` is synced by `JdbcBookRepository` but has no screen),
-and desktop packaging (jlink/jpackage). When extending, follow the implemented
+Phase 5 is complete — the application is feature-complete for this project's
+scope. **Fully implemented:** every JDBC repository (incl. settings and the
+author/publisher/category reference repos); all services (`Auth` with
+upgrade-on-login, `User`, `Patron`, `Catalog` incl. reference data, `Circulation`,
+`Reservation`, `Dashboard`, `Reports`, `Settings`, `AuditLog`); BCrypt hashing;
+CSV; the overdue scheduler; a jlink/jpackage build; and ten screens (the nine
+features plus Catalog Data). **Possible future work:** force-password-change on
+first login, role-based UI gating (the `UserRole` exists but the UI does not
+restrict actions by role yet), reservation expiry, and platform installers
+(`jpackage --type deb/rpm/msi/dmg`). When extending, follow the implemented
 repositories/services and the existing feature controllers as the reference pattern.
 
 ## Language rules

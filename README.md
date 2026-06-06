@@ -5,13 +5,12 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 4 (reports, settings, scheduling, CSV). All nine screens are
-> in place. On top of Phases 1–3, this phase adds: a **Reports** screen (overdue
-> loans, on-demand sweep, CSV export); a **Settings** screen that edits the loan
-> period and borrowing limits at runtime (DB-backed, overriding
-> `application.properties`); a background **overdue sweep** that flips past-due
-> loans to OVERDUE on a schedule; and **CSV import/export** for books and patrons.
-> Authentication hardening and packaging (jlink/jpackage) remain for later.
+> **Status:** Phase 5 (security, reference data, packaging). On top of Phases
+> 1–4, this phase adds: **BCrypt** password hashing with transparent upgrade of
+> legacy hashes on login, plus password-change and staff-creation flows; a
+> **Catalog Data** screen to manage authors, publishers, and categories (wired
+> into the Add-Book form); and a **jlink + jpackage** build that produces a
+> self-contained native application image.
 
 ## Tech stack
 
@@ -135,6 +134,27 @@ mvn verify -Pit                            # unit tests + repository integration
 > Note: the integration base class pins the Docker client API version
 > (`api.version=1.41`) because the bundled docker-java client otherwise
 > negotiates an API version that newer daemons (minimum 1.40) reject.
+
+## Packaging
+
+Build a self-contained native application image (a slim jlink runtime + the app)
+with:
+
+```bash
+./scripts/package.sh
+# launch: target/jpackage/image/LibraDesk/bin/LibraDesk
+```
+
+The script builds the jar, collects runtime dependencies, creates a trimmed JDK
+runtime with `jlink`, and assembles the image with `jpackage` (`--type
+app-image`). JavaFX and the other libraries run from the classpath, so the
+packaged app uses `com.justin.libradesk.Launcher` as its entry point (a launcher
+that does not extend `Application`). Requires JDK 21 with `jlink`/`jpackage` on
+the `PATH`.
+
+> The jlink module list in the script covers the app's needs (JavaFX, JDBC,
+> logging, BCrypt). If you enable TLS to PostgreSQL or other JDK features, run
+> `jdeps` against the dependencies and extend `--add-modules` accordingly.
 
 ## License
 
