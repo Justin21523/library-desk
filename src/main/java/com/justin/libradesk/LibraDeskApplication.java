@@ -7,6 +7,7 @@ import com.justin.libradesk.domain.enumtype.UserRole;
 import com.justin.libradesk.domain.model.User;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.database.SchemaInitializer;
+import com.justin.libradesk.infrastructure.scheduling.OverdueScheduler;
 import com.justin.libradesk.repository.UserRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
 import com.justin.libradesk.util.PasswordHasher;
@@ -28,6 +29,8 @@ public class LibraDeskApplication extends Application {
 
     private static final Logger log = LoggerFactory.getLogger(LibraDeskApplication.class);
 
+    private OverdueScheduler overdueScheduler;
+
     @Override
     public void start(Stage primaryStage) {
         try {
@@ -36,7 +39,11 @@ public class LibraDeskApplication extends Application {
             new SchemaInitializer(databaseManager).initialize();
             seedDefaultAdmin(databaseManager);
 
-            AppContext.initialize(config, databaseManager);
+            AppContext context = AppContext.initialize(config, databaseManager);
+
+            long sweepMinutes = context.settingsService().getInt("overdue.sweep.minutes", 60);
+            overdueScheduler = new OverdueScheduler(context.circulationService(), sweepMinutes);
+            overdueScheduler.start();
 
             primaryStage.setMinWidth(420);
             primaryStage.setMinHeight(360);
@@ -52,6 +59,9 @@ public class LibraDeskApplication extends Application {
 
     @Override
     public void stop() {
+        if (overdueScheduler != null) {
+            overdueScheduler.close();
+        }
         // Release the connection pool if the context was initialised.
         try {
             AppContext.get().close();

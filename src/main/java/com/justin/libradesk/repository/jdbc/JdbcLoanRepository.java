@@ -74,9 +74,13 @@ public class JdbcLoanRepository implements LoanRepository {
         return queryOne("SELECT * FROM loans WHERE id = ?", ps -> ps.setLong(1, id));
     }
 
+    // An OVERDUE loan is still outstanding: it counts against the patron's limit
+    // and can still be returned, so the "active" queries include both statuses.
+    private static final String OUTSTANDING = "status IN ('ACTIVE', 'OVERDUE')";
+
     @Override
     public int countActiveByPatron(Long patronId) {
-        String sql = "SELECT COUNT(*) FROM loans WHERE patron_id = ? AND status = 'ACTIVE'";
+        String sql = "SELECT COUNT(*) FROM loans WHERE patron_id = ? AND " + OUTSTANDING;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, patronId);
@@ -90,13 +94,13 @@ public class JdbcLoanRepository implements LoanRepository {
 
     @Override
     public List<Loan> findActiveByPatron(Long patronId) {
-        return queryList("SELECT * FROM loans WHERE patron_id = ? AND status = 'ACTIVE' ORDER BY due_at",
+        return queryList("SELECT * FROM loans WHERE patron_id = ? AND " + OUTSTANDING + " ORDER BY due_at",
                 ps -> ps.setLong(1, patronId));
     }
 
     @Override
     public Optional<Loan> findActiveByCopy(Long copyId) {
-        return queryOne("SELECT * FROM loans WHERE copy_id = ? AND status = 'ACTIVE'",
+        return queryOne("SELECT * FROM loans WHERE copy_id = ? AND " + OUTSTANDING,
                 ps -> ps.setLong(1, copyId));
     }
 

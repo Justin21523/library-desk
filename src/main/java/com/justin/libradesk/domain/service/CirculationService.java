@@ -1,6 +1,5 @@
 package com.justin.libradesk.domain.service;
 
-import com.justin.libradesk.config.AppConfig;
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.enumtype.LoanStatus;
 import com.justin.libradesk.domain.enumtype.PatronType;
@@ -19,6 +18,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -41,8 +41,8 @@ public class CirculationService {
     private final LoanRepository loanRepository;
     private final AuditLogService auditLogService;
     private final ReservationService reservationService;
+    private final SettingsService settingsService;
     private final BorrowingPolicy borrowingPolicy;
-    private final AppConfig config;
     private final Clock clock;
 
     public CirculationService(PatronRepository patronRepository,
@@ -50,16 +50,16 @@ public class CirculationService {
                               LoanRepository loanRepository,
                               AuditLogService auditLogService,
                               ReservationService reservationService,
+                              SettingsService settingsService,
                               BorrowingPolicy borrowingPolicy,
-                              AppConfig config,
                               Clock clock) {
         this.patronRepository = patronRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.loanRepository = loanRepository;
         this.auditLogService = auditLogService;
         this.reservationService = reservationService;
+        this.settingsService = settingsService;
         this.borrowingPolicy = borrowingPolicy;
-        this.config = config;
         this.clock = clock;
     }
 
@@ -91,7 +91,7 @@ public class CirculationService {
         }
 
         LocalDateTime now = LocalDateTime.now(clock);
-        LocalDateTime dueAt = now.plusDays(config.getInt("loan.period.days", 14));
+        LocalDateTime dueAt = now.plusDays(settingsService.getInt("loan.period.days", 14));
 
         Loan loan = new Loan(null, copyId, patronId, now, dueAt, null, LoanStatus.ACTIVE);
         Loan savedLoan = loanRepository.save(loan);
@@ -144,12 +144,38 @@ public class CirculationService {
         return new ReturnResult(loan.getId(), copyId, now, wasOverdue, heldForReservation);
     }
 
-    /** Resolves the configured borrowing limit for a patron type. */
-    private int borrowLimitFor(PatronType type) {
-        String key = "borrow.limit." + type.name().toLowerCase();
-        return config.getInt(key);
+    /**
+     * Marks every active loan that is past its due date as OVERDUE. Idempotent
+     * ({@code findOverdue()} only returns ACTIVE loans), so it is safe to run on
+     * a schedule. OVERDUE loans remain outstanding (they still count against the
+     * patron's limit and can still be returned).
+     *
+     * @return the number of loans newly marked overdue
+     */
+    public int markOverdueLoans() {
+        List<Loan> overdue = loanRepository.findOverdue();
+        for (Loan loan : overdue) {
+            loan.setStatus(LoanStatus.OVERDUE);
+            loanRepository.save(loan);
+            auditLogService.record("system", "LOAN_OVERDUE", "Loan", loan.getId(), null);
+        }
+        if (!overdue.isEmpty()) {
+            log.info("Marked {} loan(s) overdue", overdue.size());
+        }
+        return overdue.size();
     }
 
-    // TODO(later): add a scheduled overdue-detection sweep over
-    // loanRepository.findOverdue() to flip ACTIVE loans to OVERDUE in bulk.
+    /** Resolves the (settings-backed) borrowing limit for a patron type. */
+    private int borrowLimitFor(PatronType type) {
+        String key = "borrow.limit." + type.name().toLowerCase();
+        return settingsService.getInt(key, defaultLimitFor(type));
+    }
+
+    private static int defaultLimitFor(PatronType type) {
+        return switch (type) {
+            case STUDENT -> 5;
+            case STAFF -> 10;
+            case PUBLIC -> 3;
+        };
+    }
 }
