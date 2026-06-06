@@ -1,31 +1,60 @@
 package com.justin.libradesk.domain.service;
 
+import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.model.Book;
+import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.repository.BookCopyRepository;
 import com.justin.libradesk.repository.BookRepository;
+import com.justin.libradesk.validation.ValidationException;
 
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 /**
- * Manages the catalog (books and their physical copies).
- *
- * <p>Phase 1 skeleton: lookups delegate to the repositories (currently returning
- * empty results until {@code JdbcBookRepository}/{@code JdbcBookCopyRepository}
- * are implemented in Phase 2). Mutating operations are added in Phase 2 once the
- * repositories support writes.
+ * Manages the catalog: bibliographic records ({@link Book}) and their physical,
+ * loanable copies ({@link BookCopy}).
  */
 public class CatalogService {
 
     private final BookRepository bookRepository;
     private final BookCopyRepository bookCopyRepository;
     private final AuditLogService auditLogService;
+    private final Clock clock;
 
     public CatalogService(BookRepository bookRepository,
                           BookCopyRepository bookCopyRepository,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          Clock clock) {
         this.bookRepository = bookRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.auditLogService = auditLogService;
+        this.clock = clock;
+    }
+
+    // --- Books ---
+
+    /**
+     * Adds a new bibliographic record.
+     *
+     * @throws ValidationException if the title is blank or the ISBN is already used
+     */
+    public Book addBook(Book book, String actor) {
+        if (isBlank(book.getTitle())) {
+            throw new ValidationException("Title is required");
+        }
+        if (!isBlank(book.getIsbn())) {
+            bookRepository.findByIsbn(book.getIsbn()).ifPresent(existing -> {
+                throw new ValidationException("ISBN already exists: " + book.getIsbn());
+            });
+        }
+        if (book.getCreatedAt() == null) {
+            book.setCreatedAt(LocalDateTime.now(clock));
+        }
+        Book saved = bookRepository.save(book);
+        auditLogService.record(actor, "BOOK_ADDED", "Book", saved.getId(), book.getTitle());
+        return saved;
     }
 
     public List<Book> listBooks() {
@@ -36,5 +65,57 @@ public class CatalogService {
         return bookRepository.searchByTitle(fragment);
     }
 
-    // TODO(phase2): addBook, updateBook, addCopy, retireCopy with audit + validation.
+    public Optional<Book> getBook(Long bookId) {
+        return bookRepository.findById(bookId);
+    }
+
+    // --- Copies ---
+
+    /**
+     * Adds a physical copy to a book. New copies start {@link CopyStatus#AVAILABLE}.
+     *
+     * @throws ValidationException if the barcode is blank or already used
+     */
+    public BookCopy addCopy(BookCopy copy, String actor) {
+        if (copy.getBookId() == null) {
+            throw new ValidationException("A copy must belong to a book");
+        }
+        if (isBlank(copy.getBarcode())) {
+            throw new ValidationException("Barcode is required");
+        }
+        bookCopyRepository.findByBarcode(copy.getBarcode()).ifPresent(existing -> {
+            throw new ValidationException("Barcode already exists: " + copy.getBarcode());
+        });
+        if (copy.getStatus() == null) {
+            copy.setStatus(CopyStatus.AVAILABLE);
+        }
+        if (copy.getCreatedAt() == null) {
+            copy.setCreatedAt(LocalDateTime.now(clock));
+        }
+        BookCopy saved = bookCopyRepository.save(copy);
+        auditLogService.record(actor, "COPY_ADDED", "BookCopy", saved.getId(), copy.getBarcode());
+        return saved;
+    }
+
+    /** Manually changes a copy's status (e.g. mark LOST or DAMAGED). */
+    public BookCopy updateCopyStatus(Long copyId, CopyStatus status, String actor) {
+        BookCopy copy = bookCopyRepository.findById(copyId)
+                .orElseThrow(() -> new ValidationException("Book copy not found: " + copyId));
+        copy.setStatus(status);
+        BookCopy saved = bookCopyRepository.save(copy);
+        auditLogService.record(actor, "COPY_STATUS_CHANGED", "BookCopy", copyId, status.name());
+        return saved;
+    }
+
+    public List<BookCopy> listCopies(Long bookId) {
+        return bookCopyRepository.findByBookId(bookId);
+    }
+
+    public Optional<BookCopy> findCopyByBarcode(String barcode) {
+        return bookCopyRepository.findByBarcode(barcode);
+    }
+
+    private static boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
 }

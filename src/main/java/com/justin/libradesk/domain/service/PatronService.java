@@ -42,6 +42,10 @@ public class PatronService {
         return patronRepository.findAll();
     }
 
+    public java.util.Optional<Patron> findByMembershipNo(String membershipNo) {
+        return patronRepository.findByMembershipNo(membershipNo);
+    }
+
     /** Suspends a patron so the borrowing rules will block further loans. */
     public Patron suspend(Long patronId, String actor) {
         Patron patron = patronRepository.findById(patronId)
