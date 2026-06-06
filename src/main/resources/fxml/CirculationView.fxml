@@ -21,6 +21,7 @@
         <TextField fx:id="checkoutMembershipField" promptText="Membership no."/>
         <TextField fx:id="checkoutBarcodeField" promptText="Copy barcode"/>
         <Button text="Check out" onAction="#onCheckout" styleClass="primary-button"/>
+        <Button text="Save receipt (PDF)" onAction="#onSaveReceipt"/>
     </HBox>
 
     <Separator/>

@@ -39,6 +39,8 @@ public class MainLayoutController {
     @FXML
     private Button usersButton;
     @FXML
+    private Button auditButton;
+    @FXML
     private Button settingsButton;
 
     @FXML
@@ -60,6 +62,7 @@ public class MainLayoutController {
         gate(finesButton, Permission.FINES);
         gate(reportsButton, Permission.REPORTS);
         gate(usersButton, Permission.USERS);
+        gate(auditButton, Permission.AUDIT);
         gate(settingsButton, Permission.SETTINGS);
     }
 
@@ -117,6 +120,11 @@ public class MainLayoutController {
     @FXML
     private void onUsers() {
         load("/fxml/UsersView.fxml");
+    }
+
+    @FXML
+    private void onAudit() {
+        load("/fxml/AuditView.fxml");
     }
 
     @FXML

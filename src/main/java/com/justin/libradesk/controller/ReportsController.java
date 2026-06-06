@@ -2,22 +2,30 @@ package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.model.Loan;
+import com.justin.libradesk.dto.DailyCount;
+import com.justin.libradesk.dto.NamedCount;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
 import javafx.scene.Node;
+import javafx.scene.chart.BarChart;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.XYChart;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.stage.FileChooser;
 
 import java.io.File;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 /**
- * Reports screen: lists overdue loans, lets staff trigger the overdue sweep on
- * demand, and exports the overdue report as CSV.
+ * Reports screen: overdue loans (with on-demand sweep and CSV/PDF export) plus
+ * aggregate charts. Read data comes from {@code ReportsService}.
  */
 public class ReportsController {
+
+    private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("MM-dd");
 
     @FXML
     private TableView<Loan> overdueTable;
@@ -31,6 +39,12 @@ public class ReportsController {
     private TableColumn<Loan, String> dueColumn;
     @FXML
     private TableColumn<Loan, String> statusColumn;
+    @FXML
+    private BarChart<String, Number> mostBorrowedChart;
+    @FXML
+    private BarChart<String, Number> byTypeChart;
+    @FXML
+    private LineChart<String, Number> loansPerDayChart;
 
     @FXML
     private void initialize() {
@@ -60,11 +74,7 @@ public class ReportsController {
 
     @FXML
     private void onExportCsv() {
-        FileChooser chooser = new FileChooser();
-        chooser.setTitle("Export overdue loans");
-        chooser.setInitialFileName("overdue-loans.csv");
-        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("CSV", "*.csv"));
-        File file = chooser.showSaveDialog(window());
+        File file = chooser("overdue-loans.csv").showSaveDialog(window());
         if (file == null) {
             return;
         }
@@ -76,9 +86,51 @@ public class ReportsController {
         }
     }
 
+    @FXML
+    private void onExportPdf() {
+        File file = chooser("overdue-loans.pdf").showSaveDialog(window());
+        if (file == null) {
+            return;
+        }
+        try {
+            AppContext.get().pdfService().writeOverdueReport(file, AppContext.get().reportsService().overdueLoans());
+            Dialogs.info("Exported to " + file.getName());
+        } catch (RuntimeException e) {
+            Dialogs.error("Export failed: " + e.getMessage());
+        }
+    }
+
     private void refresh() {
-        List<Loan> overdue = AppContext.get().reportsService().overdueLoans();
-        overdueTable.setItems(FXCollections.observableArrayList(overdue));
+        overdueTable.setItems(FXCollections.observableArrayList(
+                AppContext.get().reportsService().overdueLoans()));
+        populateCharts();
+    }
+
+    private void populateCharts() {
+        var reports = AppContext.get().reportsService();
+        setBars(mostBorrowedChart, reports.mostBorrowed(5));
+        setBars(byTypeChart, reports.activeLoansByPatronType());
+
+        XYChart.Series<String, Number> daily = new XYChart.Series<>();
+        for (DailyCount point : reports.loansPerDay(14)) {
+            daily.getData().add(new XYChart.Data<>(point.date().format(DAY), point.count()));
+        }
+        loansPerDayChart.getData().setAll(daily);
+    }
+
+    private void setBars(BarChart<String, Number> chart, List<NamedCount> counts) {
+        XYChart.Series<String, Number> series = new XYChart.Series<>();
+        for (NamedCount count : counts) {
+            series.getData().add(new XYChart.Data<>(count.name(), count.count()));
+        }
+        chart.getData().setAll(series);
+    }
+
+    private FileChooser chooser(String initialName) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export overdue loans");
+        chooser.setInitialFileName(initialName);
+        return chooser;
     }
 
     private javafx.stage.Window window() {
