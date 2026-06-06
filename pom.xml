@@ -24,6 +24,7 @@
         <postgresql.version>42.7.11</postgresql.version>
         <hikaricp.version>5.1.0</hikaricp.version>
         <commons.csv.version>1.11.0</commons.csv.version>
+        <openpdf.version>1.3.35</openpdf.version>
         <bcrypt.version>0.10.2</bcrypt.version>
         <testcontainers.version>1.19.8</testcontainers.version>
 
@@ -91,6 +92,13 @@
             <groupId>at.favre.lib</groupId>
             <artifactId>bcrypt</artifactId>
             <version>${bcrypt.version}</version>
+        </dependency>
+
+        <!-- PDF export -->
+        <dependency>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>${openpdf.version}</version>
         </dependency>
 
         <!-- Testing -->

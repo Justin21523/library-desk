@@ -15,6 +15,7 @@ import com.justin.libradesk.domain.service.SettingsService;
 import com.justin.libradesk.domain.service.UserService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.export.CsvService;
+import com.justin.libradesk.infrastructure.export.PdfService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookCopyRepository;
@@ -56,6 +57,7 @@ public final class AppContext implements AutoCloseable {
     private final ReportsService reportsService;
     private final SettingsService settingsService;
     private final CsvService csvService;
+    private final PdfService pdfService;
     private final AuditLogService auditLogService;
 
     private User currentUser;
@@ -93,8 +95,10 @@ public final class AppContext implements AutoCloseable {
                 new BorrowingPolicy(), clock);
         this.dashboardService = new DashboardService(bookRepository, bookCopyRepository,
                 patronRepository, loanRepository, reservationRepository);
-        this.reportsService = new ReportsService(loanRepository, clock);
+        this.reportsService = new ReportsService(loanRepository, bookRepository, bookCopyRepository,
+                patronRepository, clock);
         this.csvService = new CsvService();
+        this.pdfService = new PdfService();
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -159,6 +163,10 @@ public final class AppContext implements AutoCloseable {
 
     public CsvService csvService() {
         return csvService;
+    }
+
+    public PdfService pdfService() {
+        return pdfService;
     }
 
     public AuditLogService auditLogService() {
