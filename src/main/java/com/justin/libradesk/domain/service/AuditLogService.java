@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * Writes audit records for important operations. Other services depend on this
@@ -41,4 +42,10 @@ public class AuditLogService {
         log.debug("Audit: actor={} action={} entity={}#{}", actor, action, entityType, entityId);
         return saved;
     }
+
+    /** @return all audit entries, newest first (for the audit viewer). */
+    public List<AuditLog> recent() {
+        return auditLogRepository.findAll();
+    }
 }
+
