@@ -3,6 +3,7 @@ package com.justin.libradesk.repository;
 import com.justin.libradesk.domain.model.Loan;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface LoanRepository extends Repository<Loan, Long> {
 
@@ -11,6 +12,9 @@ public interface LoanRepository extends Repository<Loan, Long> {
 
     List<Loan> findActiveByPatron(Long patronId);
 
-    /** @return all active loans whose due date is before {@code now}. */
+    /** @return the open (ACTIVE) loan for a copy, if one exists (used by check-in). */
+    Optional<Loan> findActiveByCopy(Long copyId);
+
+    /** @return all active loans whose due date is before now. */
     List<Loan> findOverdue();
 }
