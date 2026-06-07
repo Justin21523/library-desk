@@ -11,15 +11,19 @@ import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.domain.service.CircPolicyService;
 import com.justin.libradesk.domain.service.CirculationService;
 import com.justin.libradesk.domain.service.DashboardService;
+import com.justin.libradesk.domain.service.ELinkService;
 import com.justin.libradesk.domain.service.FineService;
+import com.justin.libradesk.domain.service.HoldingService;
 import com.justin.libradesk.domain.service.LocationService;
 import com.justin.libradesk.domain.service.NoticeService;
 import com.justin.libradesk.domain.service.PatronAccountService;
 import com.justin.libradesk.domain.service.PatronService;
 import com.justin.libradesk.domain.service.ReportsService;
 import com.justin.libradesk.domain.service.ReservationService;
+import com.justin.libradesk.domain.service.SerialsService;
 import com.justin.libradesk.domain.service.SettingsService;
 import com.justin.libradesk.domain.service.UserService;
+import com.justin.libradesk.domain.service.WorkService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.export.CsvService;
 import com.justin.libradesk.infrastructure.export.PdfService;
@@ -28,6 +32,10 @@ import com.justin.libradesk.infrastructure.marc.LocSruClient;
 import com.justin.libradesk.infrastructure.marc.MarcService;
 import com.justin.libradesk.infrastructure.notify.LoggingMailer;
 import com.justin.libradesk.infrastructure.notify.Mailer;
+import com.justin.libradesk.infrastructure.scheduling.Job;
+import com.justin.libradesk.infrastructure.scheduling.JobScheduler;
+import com.justin.libradesk.infrastructure.web.ApiServer;
+import com.justin.libradesk.infrastructure.web.HttpLinkChecker;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorityRepository;
@@ -37,16 +45,21 @@ import com.justin.libradesk.repository.jdbc.JdbcBranchRepository;
 import com.justin.libradesk.repository.jdbc.JdbcCalendarRepository;
 import com.justin.libradesk.repository.jdbc.JdbcCategoryRepository;
 import com.justin.libradesk.repository.jdbc.JdbcCircPolicyRepository;
+import com.justin.libradesk.repository.jdbc.JdbcELinkRepository;
 import com.justin.libradesk.repository.jdbc.JdbcFineRepository;
+import com.justin.libradesk.repository.jdbc.JdbcHoldingRepository;
 import com.justin.libradesk.repository.jdbc.JdbcLoanRepository;
 import com.justin.libradesk.repository.jdbc.JdbcLocationRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPatronRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPaymentRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPublisherRepository;
 import com.justin.libradesk.repository.jdbc.JdbcReservationRepository;
+import com.justin.libradesk.repository.jdbc.JdbcSerialIssueRepository;
 import com.justin.libradesk.repository.jdbc.JdbcSettingsRepository;
 import com.justin.libradesk.repository.jdbc.JdbcSubjectRepository;
+import com.justin.libradesk.repository.jdbc.JdbcSubscriptionRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
+import com.justin.libradesk.repository.jdbc.JdbcWorkRepository;
 
 import java.time.Clock;
 
@@ -79,6 +92,12 @@ public final class AppContext implements AutoCloseable {
     private final LocationService locationService;
     private final PatronAccountService patronAccountService;
     private final NoticeService noticeService;
+    private final WorkService workService;
+    private final HoldingService holdingService;
+    private final SerialsService serialsService;
+    private final ELinkService eLinkService;
+    private final ApiServer apiServer;
+    private final JobScheduler jobScheduler;
     private final DashboardService dashboardService;
     private final ReportsService reportsService;
     private final SettingsService settingsService;
@@ -114,6 +133,11 @@ public final class AppContext implements AutoCloseable {
         JdbcLocationRepository locationRepository = new JdbcLocationRepository(databaseManager);
         JdbcCircPolicyRepository circPolicyRepository = new JdbcCircPolicyRepository(databaseManager);
         JdbcCalendarRepository calendarRepository = new JdbcCalendarRepository(databaseManager);
+        JdbcWorkRepository workRepository = new JdbcWorkRepository(databaseManager);
+        JdbcHoldingRepository holdingRepository = new JdbcHoldingRepository(databaseManager);
+        JdbcSubscriptionRepository subscriptionRepository = new JdbcSubscriptionRepository(databaseManager);
+        JdbcSerialIssueRepository serialIssueRepository = new JdbcSerialIssueRepository(databaseManager);
+        JdbcELinkRepository eLinkRepository = new JdbcELinkRepository(databaseManager);
 
         this.auditLogService = new AuditLogService(auditLogRepository, clock);
         this.settingsService = new SettingsService(settingsRepository, config, auditLogService);
@@ -143,6 +167,12 @@ public final class AppContext implements AutoCloseable {
         Mailer mailer = new LoggingMailer();
         this.noticeService = new NoticeService(loanRepository, reservationRepository, patronRepository,
                 bookCopyRepository, bookRepository, settingsService, auditLogService, mailer, clock);
+        this.workService = new WorkService(workRepository, bookRepository, authorRepository, auditLogService);
+        this.holdingService = new HoldingService(holdingRepository, auditLogService);
+        this.serialsService = new SerialsService(subscriptionRepository, serialIssueRepository,
+                auditLogService, clock);
+        this.eLinkService = new ELinkService(eLinkRepository, new HttpLinkChecker(), auditLogService, clock);
+        this.jobScheduler = buildJobScheduler();
         this.dashboardService = new DashboardService(bookRepository, bookCopyRepository,
                 patronRepository, loanRepository, reservationRepository);
         this.reportsService = new ReportsService(loanRepository, bookRepository, bookCopyRepository,
@@ -151,6 +181,21 @@ public final class AppContext implements AutoCloseable {
         this.pdfService = new PdfService();
         this.marcService = new MarcService();
         this.locSruClient = new LocSruClient(marcService, config);
+        this.apiServer = new ApiServer(catalogService, catalogSearchService, patronService, marcService);
+    }
+
+    /** Registers the maintenance tasks as named, individually-runnable jobs. */
+    private JobScheduler buildJobScheduler() {
+        long minutes = settingsService.getInt("overdue.sweep.minutes", 60);
+        JobScheduler scheduler = new JobScheduler();
+        scheduler.register(Job.of("overdue-sweep", circulationService::markOverdueLoans), minutes);
+        scheduler.register(Job.of("reservation-expiry",
+                () -> reservationService.expireStaleReady("system")), minutes);
+        scheduler.register(Job.of("notice-due-soon", noticeService::sendDueSoon), minutes);
+        scheduler.register(Job.of("notice-overdue", noticeService::sendOverdue), minutes);
+        scheduler.register(Job.of("notice-hold-ready", noticeService::sendHoldReady), minutes);
+        scheduler.register(Job.of("serials-claim", () -> serialsService.claimLate("system")), minutes);
+        return scheduler;
     }
 
     /** Builds the single application context. Call once at startup. */
@@ -234,6 +279,30 @@ public final class AppContext implements AutoCloseable {
         return noticeService;
     }
 
+    public WorkService workService() {
+        return workService;
+    }
+
+    public HoldingService holdingService() {
+        return holdingService;
+    }
+
+    public SerialsService serialsService() {
+        return serialsService;
+    }
+
+    public ELinkService eLinkService() {
+        return eLinkService;
+    }
+
+    public ApiServer apiServer() {
+        return apiServer;
+    }
+
+    public JobScheduler jobScheduler() {
+        return jobScheduler;
+    }
+
     public DashboardService dashboardService() {
         return dashboardService;
     }
@@ -276,6 +345,8 @@ public final class AppContext implements AutoCloseable {
 
     @Override
     public void close() {
+        jobScheduler.close();
+        apiServer.close();
         databaseManager.close();
         instance = null;
     }

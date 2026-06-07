@@ -1,6 +1,7 @@
 package com.justin.libradesk.infrastructure;
 
 import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.domain.enumtype.Frequency;
 import com.justin.libradesk.domain.enumtype.PatronStatus;
 import com.justin.libradesk.domain.enumtype.PatronType;
 import com.justin.libradesk.domain.model.Book;
@@ -39,13 +40,23 @@ public class DemoDataSeeder {
 
         seedStructureAndPolicies();
 
-        addBookWithCopies("978-0001", "Clean Code", 2008, "CC-1", "CC-2");
+        Book cleanCode = addBookWithCopies("978-0001", "Clean Code", 2008, "CC-1", "CC-2");
         addBookWithCopies("978-0002", "The Pragmatic Programmer", 1999, "PP-1");
         addBookWithCopies("978-0003", "Effective Java", 2018, "EJ-1", "EJ-2", "EJ-3");
 
         register("M001", "Alice Reader", "alice@example.com", PatronType.STUDENT);
         register("M002", "Bob Member", "bob@example.com", PatronType.PUBLIC);
         register("M003", "Carol Staff", "carol@example.com", PatronType.STAFF);
+
+        seedBibliographicStructure(cleanCode);
+    }
+
+    /** Seeds Phase 17 structure: a work grouping, a serial, and an e-resource link. */
+    private void seedBibliographicStructure(Book book) {
+        context.workService().groupIntoWorks(ACTOR);
+        context.eLinkService().add(book.getId(), "https://example.com/clean-code", "Publisher page", ACTOR);
+        context.serialsService().subscribe(book.getId(), "Tech Journal", Frequency.MONTHLY,
+                LocalDate.now(), ACTOR);
     }
 
     /** Seeds a branch with locations, a default policy per patron type, and a sample closed day. */
@@ -69,7 +80,7 @@ public class DemoDataSeeder {
                 renewalLimit, maxHolds, new BigDecimal(finePerDay), new BigDecimal(fineCap), graceDays), ACTOR);
     }
 
-    private void addBookWithCopies(String isbn, String title, int year, String... barcodes) {
+    private Book addBookWithCopies(String isbn, String title, int year, String... barcodes) {
         Book book = new Book();
         book.setIsbn(isbn);
         book.setTitle(title);
@@ -81,6 +92,7 @@ public class DemoDataSeeder {
             copy.setBarcode(barcode);
             context.catalogService().addCopy(copy, ACTOR);
         }
+        return saved;
     }
 
     private void register(String membershipNo, String fullName, String email, PatronType type) {

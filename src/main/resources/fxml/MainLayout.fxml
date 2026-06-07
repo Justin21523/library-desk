@@ -13,24 +13,28 @@
     <left>
         <VBox styleClass="sidebar">
             <Label fx:id="userLabel" text="" textFill="WHITE"/>
-            <Button text="Dashboard"   onAction="#onDashboard"/>
-            <Button text="Catalog Search" onAction="#onCatalogSearch"/>
-            <Button fx:id="catalogButton"     text="Catalog"      onAction="#onCatalog"/>
-            <Button fx:id="catalogDataButton" text="Catalog Data" onAction="#onReferenceData"/>
-            <Button fx:id="copiesButton"      text="Book Copies"  onAction="#onCopies"/>
-            <Button fx:id="patronsButton"     text="Patrons"      onAction="#onPatrons"/>
-            <Button text="Circulation"  onAction="#onCirculation"/>
-            <Button text="Reservations" onAction="#onReservations"/>
-            <Button text="Patron Account" onAction="#onPatronAccount"/>
-            <Button fx:id="finesButton"    text="Fines"     onAction="#onFines"/>
-            <Button fx:id="circPolicyButton" text="Circ Policies" onAction="#onCircPolicy"/>
-            <Button fx:id="calendarButton"   text="Calendar"      onAction="#onCalendar"/>
-            <Button fx:id="reportsButton"  text="Reports"   onAction="#onReports"/>
-            <Button fx:id="usersButton"    text="Users"     onAction="#onUsers"/>
-            <Button fx:id="auditButton"    text="Audit"     onAction="#onAudit"/>
-            <Button fx:id="settingsButton" text="Settings"  onAction="#onSettings"/>
-            <Button text="About"        onAction="#onAbout"/>
-            <Button text="Sign out"     onAction="#onLogout"/>
+            <Button text="%nav.dashboard"   onAction="#onDashboard"/>
+            <Button text="%nav.catalogSearch" onAction="#onCatalogSearch"/>
+            <Button fx:id="catalogButton"     text="%nav.catalog"      onAction="#onCatalog"/>
+            <Button fx:id="catalogDataButton" text="%nav.catalogData" onAction="#onReferenceData"/>
+            <Button fx:id="copiesButton"      text="%nav.copies"  onAction="#onCopies"/>
+            <Button fx:id="serialsButton"     text="%nav.serials" onAction="#onSerials"/>
+            <Button fx:id="worksButton"       text="%nav.works"   onAction="#onWorks"/>
+            <Button fx:id="bibExtrasButton"   text="%nav.holdings" onAction="#onBibExtras"/>
+            <Button fx:id="patronsButton"     text="%nav.patrons"      onAction="#onPatrons"/>
+            <Button text="%nav.circulation"  onAction="#onCirculation"/>
+            <Button text="%nav.reservations" onAction="#onReservations"/>
+            <Button text="%nav.patronAccount" onAction="#onPatronAccount"/>
+            <Button fx:id="finesButton"    text="%nav.fines"     onAction="#onFines"/>
+            <Button fx:id="circPolicyButton" text="%nav.circPolicies" onAction="#onCircPolicy"/>
+            <Button fx:id="calendarButton"   text="%nav.calendar"      onAction="#onCalendar"/>
+            <Button fx:id="reportsButton"  text="%nav.reports"   onAction="#onReports"/>
+            <Button fx:id="jobsButton"     text="%nav.jobs"      onAction="#onJobs"/>
+            <Button fx:id="usersButton"    text="%nav.users"     onAction="#onUsers"/>
+            <Button fx:id="auditButton"    text="%nav.audit"     onAction="#onAudit"/>
+            <Button fx:id="settingsButton" text="%nav.settings"  onAction="#onSettings"/>
+            <Button text="%nav.about"        onAction="#onAbout"/>
+            <Button text="%nav.signOut"     onAction="#onLogout"/>
         </VBox>
     </left>
     <center>

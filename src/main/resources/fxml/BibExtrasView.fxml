@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justin.libradesk.controller.BibExtrasController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Holdings &amp; E-Resource Links" styleClass="app-title"/>
+
+    <HBox spacing="8">
+        <Label text="Bib:"/>
+        <ComboBox fx:id="bookCombo" prefWidth="300"/>
+        <Button text="Load" onAction="#onLoad" styleClass="primary-button"/>
+    </HBox>
+
+    <Label text="Holdings"/>
+    <TableView fx:id="holdingTable" prefHeight="150">
+        <columns>
+            <TableColumn fx:id="holdingCallColumn" text="Call number" prefWidth="160"/>
+            <TableColumn fx:id="holdingSummaryColumn" text="Summary" prefWidth="260"/>
+            <TableColumn fx:id="holdingNoteColumn" text="Note" prefWidth="160"/>
+        </columns>
+    </TableView>
+    <HBox spacing="8">
+        <TextField fx:id="callNumberField" promptText="Call number"/>
+        <TextField fx:id="summaryField" promptText="Holdings summary" prefWidth="240"/>
+        <Button text="Add holding" onAction="#onAddHolding"/>
+        <Button text="Delete holding" onAction="#onDeleteHolding"/>
+    </HBox>
+
+    <Label text="E-resource links (856)"/>
+    <TableView fx:id="linkTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="linkUrlColumn" text="URL" prefWidth="300"/>
+            <TableColumn fx:id="linkLabelColumn" text="Label" prefWidth="140"/>
+            <TableColumn fx:id="linkStatusColumn" text="Last status" prefWidth="90"/>
+            <TableColumn fx:id="linkCheckedColumn" text="Checked" prefWidth="160"/>
+        </columns>
+    </TableView>
+    <HBox spacing="8">
+        <TextField fx:id="urlField" promptText="https://…" prefWidth="280"/>
+        <TextField fx:id="linkLabelField" promptText="Label"/>
+        <Button text="Add link" onAction="#onAddLink"/>
+        <Button text="Check links" onAction="#onCheckLinks"/>
+        <Button text="Delete link" onAction="#onDeleteLink"/>
+    </HBox>
+</VBox>

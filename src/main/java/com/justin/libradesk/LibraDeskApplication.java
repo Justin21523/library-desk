@@ -8,9 +8,9 @@ import com.justin.libradesk.domain.model.User;
 import com.justin.libradesk.infrastructure.DemoDataSeeder;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.database.FlywayMigrator;
-import com.justin.libradesk.infrastructure.scheduling.MaintenanceScheduler;
 import com.justin.libradesk.repository.UserRepository;
 import com.justin.libradesk.repository.jdbc.JdbcUserRepository;
+import com.justin.libradesk.util.Messages;
 import com.justin.libradesk.util.PasswordHasher;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -33,8 +33,6 @@ public class LibraDeskApplication extends Application {
     /** Application version, shown in the About dialog. */
     public static final String VERSION = "0.1.0";
 
-    private MaintenanceScheduler maintenanceScheduler;
-
     @Override
     public void start(Stage primaryStage) {
         try {
@@ -46,10 +44,9 @@ public class LibraDeskApplication extends Application {
             AppContext context = AppContext.initialize(config, databaseManager);
             seedDemoDataIfRequested(context);
 
-            long sweepMinutes = context.settingsService().getInt("overdue.sweep.minutes", 60);
-            maintenanceScheduler = new MaintenanceScheduler(context.circulationService(),
-                    context.reservationService(), context.noticeService(), sweepMinutes);
-            maintenanceScheduler.start();
+            Messages.setLocale(context.settingsService().getString("ui.locale", "en"));
+            context.jobScheduler().start();
+            startApiServerIfEnabled(context);
 
             primaryStage.setMinWidth(420);
             primaryStage.setMinHeight(360);
@@ -65,14 +62,19 @@ public class LibraDeskApplication extends Application {
 
     @Override
     public void stop() {
-        if (maintenanceScheduler != null) {
-            maintenanceScheduler.close();
-        }
-        // Release the connection pool if the context was initialised.
+        // Releases the connection pool, job scheduler, and API server if initialised.
         try {
             AppContext.get().close();
         } catch (IllegalStateException ignored) {
             // Context never initialised (startup failed); nothing to close.
+        }
+    }
+
+    /** Starts the interoperability server when {@code api.server.enabled=true}. */
+    private void startApiServerIfEnabled(AppContext context) {
+        if (Boolean.parseBoolean(context.config().getString("api.server.enabled", "false"))) {
+            int port = context.settingsService().getInt("api.server.port", 8080);
+            context.apiServer().start(port);
         }
     }
 

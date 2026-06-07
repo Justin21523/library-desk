@@ -32,6 +32,12 @@ public class MainLayoutController {
     @FXML
     private Button copiesButton;
     @FXML
+    private Button serialsButton;
+    @FXML
+    private Button worksButton;
+    @FXML
+    private Button bibExtrasButton;
+    @FXML
     private Button patronsButton;
     @FXML
     private Button finesButton;
@@ -41,6 +47,8 @@ public class MainLayoutController {
     private Button calendarButton;
     @FXML
     private Button reportsButton;
+    @FXML
+    private Button jobsButton;
     @FXML
     private Button usersButton;
     @FXML
@@ -63,11 +71,15 @@ public class MainLayoutController {
         gate(catalogButton, Permission.CATALOG);
         gate(catalogDataButton, Permission.CATALOG);
         gate(copiesButton, Permission.CATALOG);
+        gate(serialsButton, Permission.CATALOG);
+        gate(worksButton, Permission.CATALOG);
+        gate(bibExtrasButton, Permission.CATALOG);
         gate(patronsButton, Permission.PATRONS);
         gate(finesButton, Permission.FINES);
         gate(circPolicyButton, Permission.SETTINGS);
         gate(calendarButton, Permission.SETTINGS);
         gate(reportsButton, Permission.REPORTS);
+        gate(jobsButton, Permission.SETTINGS);
         gate(usersButton, Permission.USERS);
         gate(auditButton, Permission.AUDIT);
         gate(settingsButton, Permission.SETTINGS);
@@ -102,6 +114,26 @@ public class MainLayoutController {
     @FXML
     private void onCopies() {
         load("/fxml/CopiesView.fxml");
+    }
+
+    @FXML
+    private void onSerials() {
+        load("/fxml/SerialsView.fxml");
+    }
+
+    @FXML
+    private void onWorks() {
+        load("/fxml/WorksView.fxml");
+    }
+
+    @FXML
+    private void onBibExtras() {
+        load("/fxml/BibExtrasView.fxml");
+    }
+
+    @FXML
+    private void onJobs() {
+        load("/fxml/JobsView.fxml");
     }
 
     @FXML
@@ -173,7 +205,8 @@ public class MainLayoutController {
 
     private void load(String fxmlResource) {
         try {
-            Parent view = new FXMLLoader(getClass().getResource(fxmlResource)).load();
+            Parent view = new FXMLLoader(getClass().getResource(fxmlResource),
+                    com.justin.libradesk.util.Messages.bundle()).load();
             contentArea.getChildren().setAll(view);
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to load view: " + fxmlResource, e);
