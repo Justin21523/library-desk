@@ -44,6 +44,10 @@ class FxmlSmokeIT extends AbstractRepositoryIT {
             "/fxml/FinesView.fxml",
             "/fxml/CircPolicyView.fxml",
             "/fxml/CalendarView.fxml",
+            "/fxml/SerialsView.fxml",
+            "/fxml/WorksView.fxml",
+            "/fxml/BibExtrasView.fxml",
+            "/fxml/JobsView.fxml",
             "/fxml/ReportsView.fxml",
             "/fxml/UsersView.fxml",
             "/fxml/AuditView.fxml",
@@ -79,7 +83,8 @@ class FxmlSmokeIT extends AbstractRepositoryIT {
         AtomicReference<Throwable> error = new AtomicReference<>();
         Platform.runLater(() -> {
             try {
-                new FXMLLoader(getClass().getResource(resource)).load();
+                new FXMLLoader(getClass().getResource(resource),
+                        com.justin.libradesk.util.Messages.bundle()).load();
             } catch (Throwable t) {
                 error.set(t);
             } finally {

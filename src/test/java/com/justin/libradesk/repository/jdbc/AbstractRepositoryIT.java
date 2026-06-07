@@ -61,9 +61,10 @@ public abstract class AbstractRepositoryIT {
              Statement s = c.createStatement()) {
             s.execute("""
                     TRUNCATE book_authors, book_subjects, author_variants, subject_variants,
-                             payments, book_copies, loans, reservations, fines,
+                             payments, serial_issues, subscriptions, e_links, holdings,
+                             book_copies, loans, reservations, fines,
                              circ_policies, calendar_days, locations, branches,
-                             books, patrons, authors, publishers, categories, subjects,
+                             books, works, patrons, authors, publishers, categories, subjects,
                              audit_logs, settings, users
                     RESTART IDENTITY CASCADE
                     """);
