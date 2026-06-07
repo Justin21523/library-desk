@@ -5,13 +5,14 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 13 (cataloging — OPAC) — the cataloging track (10–13) is
-> complete. A reader-facing **Catalog Search** screen offers keyword search across
-> title/author/subject/ISBN, **facet narrowing** (author, subject, year, language,
-> material type), and a full record detail. Earlier cataloging phases added MARC21
-> fields + import/export, Library of Congress copy cataloging, authority see-from
-> variants, DDC/LCC call numbers, and spine labels. A standalone public OPAC and
-> **BIBFRAME** remain noted future directions.
+> **Status:** Phase 14a (full MARC editor). Catalogers can now edit records
+> field-by-field: a **MARC editor** (Leader/008, tag + indicators + inline `$`
+> subfields, add/remove/reorder, validation) where the **MARC record is the source
+> of truth** — on save the full MARCXML is stored and the structured columns are
+> re-projected. Builds on the cataloging track (10–13: MARC import/export, LoC copy
+> cataloging, authority variants, call numbers/spine labels, OPAC). Coming next:
+> batch import + dedup (14b), a full authority system, circulation policy matrix,
+> and interoperability (REST/OAI/SRU).
 
 ## Tech stack
 
