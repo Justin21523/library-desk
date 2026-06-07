@@ -29,6 +29,8 @@
 
     <HBox spacing="8">
         <Label text="MARC:"/>
+        <Button text="New MARC" onAction="#onNewMarc"/>
+        <Button text="Edit MARC" onAction="#onEditMarc"/>
         <Button text="Import MARC" onAction="#onImportMarc"/>
         <Button text="Export MARC" onAction="#onExportMarc"/>
         <Button text="View MARC" onAction="#onViewMarc"/>

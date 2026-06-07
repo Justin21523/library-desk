@@ -13,6 +13,9 @@ import com.justin.libradesk.util.Isbn;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.ComboBox;
@@ -28,10 +31,14 @@ import javafx.scene.control.TextField;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.stage.Window;
 import javafx.util.StringConverter;
 
 import java.io.File;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -272,6 +279,46 @@ public class CatalogController {
         dialog.getDialogPane().setContent(area);
         dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
         dialog.showAndWait();
+    }
+
+    @FXML
+    private void onNewMarc() {
+        openMarcEditor(null);
+    }
+
+    @FXML
+    private void onEditMarc() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null) {
+            Dialogs.error("Select a book to edit its MARC record.");
+            return;
+        }
+        openMarcEditor(selected);
+    }
+
+    private void openMarcEditor(Book book) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MarcEditorView.fxml"));
+            Parent root = loader.load();
+            MarcEditorController controller = loader.getController();
+            if (book == null) {
+                controller.loadNew();
+            } else {
+                controller.loadForBook(book);
+            }
+            Stage stage = new Stage();
+            stage.initModality(Modality.APPLICATION_MODAL);
+            stage.initOwner(window());
+            stage.setTitle("MARC editor");
+            stage.setScene(new Scene(root));
+            controller.setOnSaved(() -> {
+                stage.close();
+                onShowAll();
+            });
+            stage.showAndWait();
+        } catch (IOException e) {
+            throw new UncheckedIOException("Failed to open MARC editor", e);
+        }
     }
 
     @FXML
