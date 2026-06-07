@@ -119,6 +119,14 @@ public class JdbcReservationRepository implements ReservationRepository {
     }
 
     @Override
+    public List<Reservation> findActiveByPatron(Long patronId) {
+        return queryList(
+                "SELECT * FROM reservations WHERE patron_id = ? AND status IN ('PENDING', 'READY') "
+                        + "ORDER BY reserved_at",
+                ps -> ps.setLong(1, patronId));
+    }
+
+    @Override
     public List<Reservation> findReadyExpired(LocalDateTime cutoff) {
         return queryList(
                 "SELECT * FROM reservations WHERE status = 'READY' AND ready_at < ? ORDER BY ready_at",

@@ -33,8 +33,8 @@ public class JdbcLoanRepository implements LoanRepository {
 
     private Loan insert(Loan loan) {
         String sql = """
-                INSERT INTO loans (copy_id, patron_id, loaned_at, due_at, returned_at, status)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO loans (copy_id, patron_id, loaned_at, due_at, returned_at, status, renewal_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -55,13 +55,13 @@ public class JdbcLoanRepository implements LoanRepository {
         String sql = """
                 UPDATE loans
                    SET copy_id = ?, patron_id = ?, loaned_at = ?, due_at = ?,
-                       returned_at = ?, status = ?
+                       returned_at = ?, status = ?, renewal_count = ?
                  WHERE id = ?
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             bind(ps, loan);
-            ps.setLong(7, loan.getId());
+            ps.setLong(8, loan.getId());
             ps.executeUpdate();
             return loan;
         } catch (SQLException e) {
@@ -93,6 +93,21 @@ public class JdbcLoanRepository implements LoanRepository {
     }
 
     @Override
+    public int countByPatronAndStatus(Long patronId, LoanStatus status) {
+        String sql = "SELECT COUNT(*) FROM loans WHERE patron_id = ? AND status = ?";
+        try (Connection c = db.getConnection();
+             PreparedStatement ps = c.prepareStatement(sql)) {
+            ps.setLong(1, patronId);
+            ps.setString(2, status.name());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        } catch (SQLException e) {
+            throw new DataAccessException("Failed to count loans for patron " + patronId, e);
+        }
+    }
+
+    @Override
     public List<Loan> findActiveByPatron(Long patronId) {
         return queryList("SELECT * FROM loans WHERE patron_id = ? AND " + OUTSTANDING + " ORDER BY due_at",
                 ps -> ps.setLong(1, patronId));
@@ -108,6 +123,22 @@ public class JdbcLoanRepository implements LoanRepository {
     public List<Loan> findOverdue() {
         return queryList("SELECT * FROM loans WHERE status = 'ACTIVE' AND due_at < now() ORDER BY due_at",
                 ps -> { });
+    }
+
+    @Override
+    public List<Loan> findActiveDueBetween(LocalDateTime from, LocalDateTime to) {
+        return queryList(
+                "SELECT * FROM loans WHERE status = 'ACTIVE' AND due_at BETWEEN ? AND ? ORDER BY due_at",
+                ps -> {
+                    ps.setTimestamp(1, Timestamp.valueOf(from));
+                    ps.setTimestamp(2, Timestamp.valueOf(to));
+                });
+    }
+
+    @Override
+    public List<Loan> findByStatus(LoanStatus status) {
+        return queryList("SELECT * FROM loans WHERE status = ? ORDER BY due_at",
+                ps -> ps.setString(1, status.name()));
     }
 
     @Override
@@ -137,6 +168,7 @@ public class JdbcLoanRepository implements LoanRepository {
             ps.setNull(5, Types.TIMESTAMP);
         }
         ps.setString(6, loan.getStatus().name());
+        ps.setInt(7, loan.getRenewalCount());
     }
 
     private Optional<Loan> queryOne(String sql, StatementBinder binder) {
@@ -170,7 +202,7 @@ public class JdbcLoanRepository implements LoanRepository {
     private Loan mapRow(ResultSet rs) throws SQLException {
         Timestamp returned = rs.getTimestamp("returned_at");
         LocalDateTime returnedAt = returned != null ? returned.toLocalDateTime() : null;
-        return new Loan(
+        Loan loan = new Loan(
                 rs.getLong("id"),
                 rs.getLong("copy_id"),
                 rs.getLong("patron_id"),
@@ -178,6 +210,8 @@ public class JdbcLoanRepository implements LoanRepository {
                 rs.getTimestamp("due_at").toLocalDateTime(),
                 returnedAt,
                 LoanStatus.valueOf(rs.getString("status")));
+        loan.setRenewalCount(rs.getInt("renewal_count"));
+        return loan;
     }
 
     @FunctionalInterface

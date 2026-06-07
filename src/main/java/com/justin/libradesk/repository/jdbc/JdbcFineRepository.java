@@ -1,5 +1,6 @@
 package com.justin.libradesk.repository.jdbc;
 
+import com.justin.libradesk.domain.enumtype.FeeType;
 import com.justin.libradesk.domain.enumtype.FineStatus;
 import com.justin.libradesk.domain.model.Fine;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
@@ -33,8 +34,9 @@ public class JdbcFineRepository implements FineRepository {
 
     private Fine insert(Fine fine) {
         String sql = """
-                INSERT INTO fines (patron_id, loan_id, amount, status, created_at, settled_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO fines (patron_id, loan_id, amount, status, created_at, settled_at,
+                                   fee_type, paid_amount, note)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -54,13 +56,14 @@ public class JdbcFineRepository implements FineRepository {
     private Fine update(Fine fine) {
         String sql = """
                 UPDATE fines
-                   SET patron_id = ?, loan_id = ?, amount = ?, status = ?, created_at = ?, settled_at = ?
+                   SET patron_id = ?, loan_id = ?, amount = ?, status = ?, created_at = ?, settled_at = ?,
+                       fee_type = ?, paid_amount = ?, note = ?
                  WHERE id = ?
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             bind(ps, fine);
-            ps.setLong(7, fine.getId());
+            ps.setLong(10, fine.getId());
             ps.executeUpdate();
             return fine;
         } catch (SQLException e) {
@@ -86,7 +89,8 @@ public class JdbcFineRepository implements FineRepository {
 
     @Override
     public BigDecimal unpaidTotal(Long patronId) {
-        String sql = "SELECT COALESCE(SUM(amount), 0) FROM fines WHERE patron_id = ? AND status = 'UNPAID'";
+        String sql = "SELECT COALESCE(SUM(amount - paid_amount), 0) FROM fines "
+                + "WHERE patron_id = ? AND status = 'UNPAID'";
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql)) {
             ps.setLong(1, patronId);
@@ -129,6 +133,9 @@ public class JdbcFineRepository implements FineRepository {
         } else {
             ps.setNull(6, Types.TIMESTAMP);
         }
+        ps.setString(7, fine.getFeeType().name());
+        ps.setBigDecimal(8, fine.getPaidAmount());
+        ps.setString(9, fine.getNote());
     }
 
     private Optional<Fine> queryOne(String sql, StatementBinder binder) {
@@ -163,7 +170,7 @@ public class JdbcFineRepository implements FineRepository {
         long loanId = rs.getLong("loan_id");
         Long loan = rs.wasNull() ? null : loanId;
         Timestamp settled = rs.getTimestamp("settled_at");
-        return new Fine(
+        Fine fine = new Fine(
                 rs.getLong("id"),
                 rs.getLong("patron_id"),
                 loan,
@@ -171,6 +178,10 @@ public class JdbcFineRepository implements FineRepository {
                 FineStatus.valueOf(rs.getString("status")),
                 rs.getTimestamp("created_at").toLocalDateTime(),
                 settled != null ? settled.toLocalDateTime() : null);
+        fine.setFeeType(FeeType.valueOf(rs.getString("fee_type")));
+        fine.setPaidAmount(rs.getBigDecimal("paid_amount"));
+        fine.setNote(rs.getString("note"));
+        return fine;
     }
 
     @FunctionalInterface
