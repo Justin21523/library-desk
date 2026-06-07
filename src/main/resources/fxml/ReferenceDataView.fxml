@@ -28,6 +28,12 @@
                         <TextField fx:id="authorField" promptText="Author name (authorized form)"/>
                         <Button text="Add author" onAction="#onAddAuthor" styleClass="primary-button"/>
                     </HBox>
+                    <HBox spacing="8">
+                        <TextField fx:id="authorRenameField" promptText="New authorized form"/>
+                        <Button text="Rename" onAction="#onRenameAuthor"/>
+                        <Button text="Merge into…" onAction="#onMergeAuthor"/>
+                        <Button text="Suggest from LoC" onAction="#onSuggestAuthor"/>
+                    </HBox>
                     <HBox spacing="12" VBox.vgrow="ALWAYS">
                         <ListView fx:id="authorList" HBox.hgrow="ALWAYS"/>
                         <VBox spacing="6" prefWidth="280">
@@ -67,6 +73,12 @@
                     <HBox spacing="8">
                         <TextField fx:id="subjectField" promptText="Subject heading (authorized form)"/>
                         <Button text="Add subject" onAction="#onAddSubject" styleClass="primary-button"/>
+                    </HBox>
+                    <HBox spacing="8">
+                        <TextField fx:id="subjectRenameField" promptText="New authorized form"/>
+                        <Button text="Rename" onAction="#onRenameSubject"/>
+                        <Button text="Merge into…" onAction="#onMergeSubject"/>
+                        <Button text="Suggest from LoC" onAction="#onSuggestSubject"/>
                     </HBox>
                     <HBox spacing="12" VBox.vgrow="ALWAYS">
                         <ListView fx:id="subjectList" HBox.hgrow="ALWAYS"/>

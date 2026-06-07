@@ -6,11 +6,17 @@ import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
 import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
+import com.justin.libradesk.dto.AuthoritySuggestion;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ListCell;
 import javafx.scene.control.ListView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.TextInputDialog;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * Manages catalog reference data — authors, publishers, categories, and subjects.
@@ -21,6 +27,8 @@ public class ReferenceDataController {
 
     @FXML
     private TextField authorField;
+    @FXML
+    private TextField authorRenameField;
     @FXML
     private ListView<Author> authorList;
     @FXML
@@ -37,6 +45,8 @@ public class ReferenceDataController {
     private ListView<String> categoryList;
     @FXML
     private TextField subjectField;
+    @FXML
+    private TextField subjectRenameField;
     @FXML
     private ListView<Subject> subjectList;
     @FXML
@@ -114,6 +124,125 @@ public class ReferenceDataController {
             AppContext.get().authorityService().addSubjectVariant(subject.id(), subjectVariantField.getText(), actor());
             subjectVariantField.clear();
             refreshSubjectVariants(subject);
+        } catch (RuntimeException e) {
+            Dialogs.error(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onRenameAuthor() {
+        Author author = authorList.getSelectionModel().getSelectedItem();
+        if (author == null) {
+            Dialogs.error("Select an author to rename.");
+            return;
+        }
+        runAndRefresh(() -> AppContext.get().authorityService()
+                .renameAuthor(author.id(), authorRenameField.getText(), actor()), authorRenameField);
+    }
+
+    @FXML
+    private void onRenameSubject() {
+        Subject subject = subjectList.getSelectionModel().getSelectedItem();
+        if (subject == null) {
+            Dialogs.error("Select a subject to rename.");
+            return;
+        }
+        runAndRefresh(() -> AppContext.get().authorityService()
+                .renameSubject(subject.id(), subjectRenameField.getText(), actor()), subjectRenameField);
+    }
+
+    @FXML
+    private void onMergeAuthor() {
+        Author from = authorList.getSelectionModel().getSelectedItem();
+        if (from == null) {
+            Dialogs.error("Select the author to merge (it will be removed).");
+            return;
+        }
+        List<Author> others = catalog().listAuthors().stream()
+                .filter(a -> !a.id().equals(from.id())).toList();
+        choose("Merge author", "Merge \"" + from.name() + "\" into:",
+                others.stream().map(Author::name).toList()).ifPresent(name -> runAndRefresh(() ->
+                AppContext.get().authorityService().mergeAuthor(from.id(),
+                        others.get(indexOfName(others, name, Author::name)).id(), actor()), null));
+    }
+
+    @FXML
+    private void onMergeSubject() {
+        Subject from = subjectList.getSelectionModel().getSelectedItem();
+        if (from == null) {
+            Dialogs.error("Select the subject to merge (it will be removed).");
+            return;
+        }
+        List<Subject> others = catalog().listSubjects().stream()
+                .filter(s -> !s.id().equals(from.id())).toList();
+        choose("Merge subject", "Merge \"" + from.term() + "\" into:",
+                others.stream().map(Subject::term).toList()).ifPresent(term -> runAndRefresh(() ->
+                AppContext.get().authorityService().mergeSubject(from.id(),
+                        others.get(indexOfName(others, term, Subject::term)).id(), actor()), null));
+    }
+
+    @FXML
+    private void onSuggestAuthor() {
+        suggest(AppContext.get().authorityService()::suggestNames)
+                .ifPresent(label -> runAndRefresh(() -> catalog().addAuthor(label, actor()), null));
+    }
+
+    @FXML
+    private void onSuggestSubject() {
+        suggest(AppContext.get().authorityService()::suggestSubjects)
+                .ifPresent(label -> runAndRefresh(() -> catalog().addSubject(label, actor()), null));
+    }
+
+    private Optional<String> suggest(java.util.function.Function<String, List<AuthoritySuggestion>> lookup) {
+        TextInputDialog input = new TextInputDialog();
+        input.setTitle("Suggest from Library of Congress");
+        input.setHeaderText("Enter a search term");
+        Optional<String> query = input.showAndWait();
+        if (query.isEmpty() || query.get().isBlank()) {
+            return Optional.empty();
+        }
+        List<AuthoritySuggestion> results;
+        try {
+            results = lookup.apply(query.get().trim());
+        } catch (RuntimeException e) {
+            Dialogs.error("Lookup failed: " + e.getMessage());
+            return Optional.empty();
+        }
+        if (results.isEmpty()) {
+            Dialogs.error("No authorized headings found.");
+            return Optional.empty();
+        }
+        return choose("Suggested headings", "Choose an authorized heading",
+                results.stream().map(AuthoritySuggestion::label).toList());
+    }
+
+    private Optional<String> choose(String title, String header, List<String> options) {
+        if (options.isEmpty()) {
+            Dialogs.error("Nothing to choose from.");
+            return Optional.empty();
+        }
+        ChoiceDialog<String> dialog = new ChoiceDialog<>(options.get(0), options);
+        dialog.setTitle(title);
+        dialog.setHeaderText(header);
+        return dialog.showAndWait();
+    }
+
+    private static <T> int indexOfName(List<T> items, String name, java.util.function.Function<T, String> label) {
+        for (int i = 0; i < items.size(); i++) {
+            if (label.apply(items.get(i)).equals(name)) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    private void runAndRefresh(Runnable action, TextField fieldToClear) {
+        try {
+            action.run();
+            if (fieldToClear != null) {
+                fieldToClear.clear();
+            }
+            refresh();
         } catch (RuntimeException e) {
             Dialogs.error(e.getMessage());
         }
