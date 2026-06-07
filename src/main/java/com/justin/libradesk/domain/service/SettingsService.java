@@ -28,7 +28,9 @@ public class SettingsService {
             "borrow.limit.staff",
             "borrow.limit.public",
             "overdue.sweep.minutes",
-            "reservation.ready.expiry.days");
+            "reservation.ready.expiry.days",
+            "notice.due.soon.days",
+            "overdue.block.count");
 
     private final SettingsRepository settingsRepository;
     private final AppConfig defaults;

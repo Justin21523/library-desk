@@ -5,11 +5,16 @@ import com.justin.libradesk.domain.service.AuditLogService;
 import com.justin.libradesk.domain.service.AuthService;
 import com.justin.libradesk.domain.service.AuthorityService;
 import com.justin.libradesk.domain.service.BorrowingPolicy;
+import com.justin.libradesk.domain.service.CalendarService;
 import com.justin.libradesk.domain.service.CatalogSearchService;
 import com.justin.libradesk.domain.service.CatalogService;
+import com.justin.libradesk.domain.service.CircPolicyService;
 import com.justin.libradesk.domain.service.CirculationService;
 import com.justin.libradesk.domain.service.DashboardService;
 import com.justin.libradesk.domain.service.FineService;
+import com.justin.libradesk.domain.service.LocationService;
+import com.justin.libradesk.domain.service.NoticeService;
+import com.justin.libradesk.domain.service.PatronAccountService;
 import com.justin.libradesk.domain.service.PatronService;
 import com.justin.libradesk.domain.service.ReportsService;
 import com.justin.libradesk.domain.service.ReservationService;
@@ -21,15 +26,22 @@ import com.justin.libradesk.infrastructure.export.PdfService;
 import com.justin.libradesk.infrastructure.marc.LocAuthorityClient;
 import com.justin.libradesk.infrastructure.marc.LocSruClient;
 import com.justin.libradesk.infrastructure.marc.MarcService;
+import com.justin.libradesk.infrastructure.notify.LoggingMailer;
+import com.justin.libradesk.infrastructure.notify.Mailer;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorityRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookCopyRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookRepository;
+import com.justin.libradesk.repository.jdbc.JdbcBranchRepository;
+import com.justin.libradesk.repository.jdbc.JdbcCalendarRepository;
 import com.justin.libradesk.repository.jdbc.JdbcCategoryRepository;
+import com.justin.libradesk.repository.jdbc.JdbcCircPolicyRepository;
 import com.justin.libradesk.repository.jdbc.JdbcFineRepository;
 import com.justin.libradesk.repository.jdbc.JdbcLoanRepository;
+import com.justin.libradesk.repository.jdbc.JdbcLocationRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPatronRepository;
+import com.justin.libradesk.repository.jdbc.JdbcPaymentRepository;
 import com.justin.libradesk.repository.jdbc.JdbcPublisherRepository;
 import com.justin.libradesk.repository.jdbc.JdbcReservationRepository;
 import com.justin.libradesk.repository.jdbc.JdbcSettingsRepository;
@@ -62,6 +74,11 @@ public final class AppContext implements AutoCloseable {
     private final CirculationService circulationService;
     private final ReservationService reservationService;
     private final FineService fineService;
+    private final CircPolicyService circPolicyService;
+    private final CalendarService calendarService;
+    private final LocationService locationService;
+    private final PatronAccountService patronAccountService;
+    private final NoticeService noticeService;
     private final DashboardService dashboardService;
     private final ReportsService reportsService;
     private final SettingsService settingsService;
@@ -91,11 +108,22 @@ public final class AppContext implements AutoCloseable {
         JdbcSubjectRepository subjectRepository = new JdbcSubjectRepository(databaseManager);
         JdbcAuthorityRepository authorityRepository = new JdbcAuthorityRepository(databaseManager);
         JdbcFineRepository fineRepository = new JdbcFineRepository(databaseManager);
+        JdbcPaymentRepository paymentRepository = new JdbcPaymentRepository(databaseManager);
         JdbcAuditLogRepository auditLogRepository = new JdbcAuditLogRepository(databaseManager);
+        JdbcBranchRepository branchRepository = new JdbcBranchRepository(databaseManager);
+        JdbcLocationRepository locationRepository = new JdbcLocationRepository(databaseManager);
+        JdbcCircPolicyRepository circPolicyRepository = new JdbcCircPolicyRepository(databaseManager);
+        JdbcCalendarRepository calendarRepository = new JdbcCalendarRepository(databaseManager);
 
         this.auditLogService = new AuditLogService(auditLogRepository, clock);
         this.settingsService = new SettingsService(settingsRepository, config, auditLogService);
-        this.fineService = new FineService(fineRepository, settingsService, auditLogService, clock);
+        this.fineService = new FineService(fineRepository, paymentRepository, settingsService,
+                auditLogService, clock);
+        this.circPolicyService = new CircPolicyService(circPolicyRepository, settingsService, auditLogService);
+        this.calendarService = new CalendarService(calendarRepository, auditLogService);
+        this.locationService = new LocationService(branchRepository, locationRepository, auditLogService);
+        this.patronAccountService = new PatronAccountService(patronRepository, loanRepository,
+                reservationRepository, fineRepository, settingsService);
         this.authService = new AuthService(userRepository);
         this.userService = new UserService(userRepository, auditLogService, clock);
         this.patronService = new PatronService(patronRepository, auditLogService);
@@ -107,10 +135,14 @@ public final class AppContext implements AutoCloseable {
         this.catalogSearchService = new CatalogSearchService(bookRepository, authorRepository,
                 subjectRepository, publisherRepository);
         this.reservationService = new ReservationService(reservationRepository, patronRepository,
-                bookRepository, auditLogService, settingsService, clock);
+                bookRepository, auditLogService, settingsService, circPolicyService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
-                loanRepository, auditLogService, reservationService, fineService, settingsService,
+                bookRepository, loanRepository, auditLogService, reservationService, fineService,
+                settingsService, circPolicyService, calendarService, patronAccountService,
                 new BorrowingPolicy(), clock);
+        Mailer mailer = new LoggingMailer();
+        this.noticeService = new NoticeService(loanRepository, reservationRepository, patronRepository,
+                bookCopyRepository, bookRepository, settingsService, auditLogService, mailer, clock);
         this.dashboardService = new DashboardService(bookRepository, bookCopyRepository,
                 patronRepository, loanRepository, reservationRepository);
         this.reportsService = new ReportsService(loanRepository, bookRepository, bookCopyRepository,
@@ -180,6 +212,26 @@ public final class AppContext implements AutoCloseable {
 
     public FineService fineService() {
         return fineService;
+    }
+
+    public CircPolicyService circPolicyService() {
+        return circPolicyService;
+    }
+
+    public CalendarService calendarService() {
+        return calendarService;
+    }
+
+    public LocationService locationService() {
+        return locationService;
+    }
+
+    public PatronAccountService patronAccountService() {
+        return patronAccountService;
+    }
+
+    public NoticeService noticeService() {
+        return noticeService;
     }
 
     public DashboardService dashboardService() {

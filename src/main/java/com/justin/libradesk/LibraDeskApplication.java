@@ -48,7 +48,7 @@ public class LibraDeskApplication extends Application {
 
             long sweepMinutes = context.settingsService().getInt("overdue.sweep.minutes", 60);
             maintenanceScheduler = new MaintenanceScheduler(context.circulationService(),
-                    context.reservationService(), sweepMinutes);
+                    context.reservationService(), context.noticeService(), sweepMinutes);
             maintenanceScheduler.start();
 
             primaryStage.setMinWidth(420);

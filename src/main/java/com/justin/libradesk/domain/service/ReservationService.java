@@ -1,7 +1,10 @@
 package com.justin.libradesk.domain.service;
 
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.enumtype.PatronStatus;
 import com.justin.libradesk.domain.enumtype.ReservationStatus;
+import com.justin.libradesk.domain.model.Book;
+import com.justin.libradesk.domain.model.CircPolicy;
 import com.justin.libradesk.domain.model.Patron;
 import com.justin.libradesk.domain.model.Reservation;
 import com.justin.libradesk.repository.BookRepository;
@@ -30,6 +33,7 @@ public class ReservationService {
     private final BookRepository bookRepository;
     private final AuditLogService auditLogService;
     private final SettingsService settingsService;
+    private final CircPolicyService circPolicyService;
     private final Clock clock;
 
     public ReservationService(ReservationRepository reservationRepository,
@@ -37,12 +41,14 @@ public class ReservationService {
                               BookRepository bookRepository,
                               AuditLogService auditLogService,
                               SettingsService settingsService,
+                              CircPolicyService circPolicyService,
                               Clock clock) {
         this.reservationRepository = reservationRepository;
         this.patronRepository = patronRepository;
         this.bookRepository = bookRepository;
         this.auditLogService = auditLogService;
         this.settingsService = settingsService;
+        this.circPolicyService = circPolicyService;
         this.clock = clock;
     }
 
@@ -53,7 +59,7 @@ public class ReservationService {
      *                             not active, or already holds this book
      */
     public Reservation reserve(Long bookId, Long patronId, String actor) {
-        bookRepository.findById(bookId)
+        Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new ValidationException("Book not found: " + bookId));
         Patron patron = patronRepository.findById(patronId)
                 .orElseThrow(() -> new ValidationException("Patron not found: " + patronId));
@@ -63,6 +69,13 @@ public class ReservationService {
         reservationRepository.findActiveByBookAndPatron(bookId, patronId).ifPresent(existing -> {
             throw new ValidationException("Patron already has an active reservation for this book");
         });
+
+        MaterialType material = book.getMaterialType() != null ? book.getMaterialType() : MaterialType.BOOK;
+        CircPolicy policy = circPolicyService.policyFor(patron.getPatronType(), material);
+        int activeHolds = reservationRepository.findActiveByPatron(patronId).size();
+        if (activeHolds >= policy.maxHolds()) {
+            throw new ValidationException("Hold limit reached (" + activeHolds + "/" + policy.maxHolds() + ")");
+        }
 
         int nextPosition = reservationRepository.maxQueuePosition(bookId) + 1;
         Reservation reservation = new Reservation(null, bookId, patronId,

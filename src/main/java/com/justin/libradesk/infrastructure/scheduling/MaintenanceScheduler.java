@@ -1,6 +1,7 @@
 package com.justin.libradesk.infrastructure.scheduling;
 
 import com.justin.libradesk.domain.service.CirculationService;
+import com.justin.libradesk.domain.service.NoticeService;
 import com.justin.libradesk.domain.service.ReservationService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,9 +14,10 @@ import java.util.concurrent.TimeUnit;
  * Periodic background maintenance, run on a single daemon thread:
  * <ul>
  *   <li>marks active loans past their due date as OVERDUE;</li>
- *   <li>expires READY reservations not collected in time and promotes the next.</li>
+ *   <li>expires READY reservations not collected in time and promotes the next;</li>
+ *   <li>sends due-soon, overdue, and hold-ready notices via the mailer seam.</li>
  * </ul>
- * Both tasks only touch the database, never the UI.
+ * All tasks only touch the database/mailer, never the UI.
  */
 public class MaintenanceScheduler implements AutoCloseable {
 
@@ -30,13 +32,16 @@ public class MaintenanceScheduler implements AutoCloseable {
 
     private final CirculationService circulationService;
     private final ReservationService reservationService;
+    private final NoticeService noticeService;
     private final long periodMinutes;
 
     public MaintenanceScheduler(CirculationService circulationService,
                                 ReservationService reservationService,
+                                NoticeService noticeService,
                                 long periodMinutes) {
         this.circulationService = circulationService;
         this.reservationService = reservationService;
+        this.noticeService = noticeService;
         this.periodMinutes = Math.max(1, periodMinutes);
     }
 
@@ -49,6 +54,9 @@ public class MaintenanceScheduler implements AutoCloseable {
         try {
             circulationService.markOverdueLoans();
             reservationService.expireStaleReady(ACTOR);
+            noticeService.sendDueSoon();
+            noticeService.sendOverdue();
+            noticeService.sendHoldReady();
         } catch (RuntimeException e) {
             // Never let a failure kill the scheduler; it retries next period.
             log.error("Maintenance sweep failed", e);
