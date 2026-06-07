@@ -44,7 +44,8 @@ class FxmlSmokeIT extends AbstractRepositoryIT {
             "/fxml/ReportsView.fxml",
             "/fxml/UsersView.fxml",
             "/fxml/AuditView.fxml",
-            "/fxml/SettingsView.fxml");
+            "/fxml/SettingsView.fxml",
+            "/fxml/MarcEditorView.fxml");
 
     @BeforeAll
     static void startToolkitAndContext() {
