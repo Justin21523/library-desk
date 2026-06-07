@@ -3,6 +3,7 @@ package com.justin.libradesk.config;
 import com.justin.libradesk.domain.model.User;
 import com.justin.libradesk.domain.service.AuditLogService;
 import com.justin.libradesk.domain.service.AuthService;
+import com.justin.libradesk.domain.service.AuthorityService;
 import com.justin.libradesk.domain.service.BorrowingPolicy;
 import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.domain.service.CirculationService;
@@ -20,6 +21,7 @@ import com.justin.libradesk.infrastructure.marc.LocSruClient;
 import com.justin.libradesk.infrastructure.marc.MarcService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
 import com.justin.libradesk.repository.jdbc.JdbcAuthorRepository;
+import com.justin.libradesk.repository.jdbc.JdbcAuthorityRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookCopyRepository;
 import com.justin.libradesk.repository.jdbc.JdbcBookRepository;
 import com.justin.libradesk.repository.jdbc.JdbcCategoryRepository;
@@ -53,6 +55,7 @@ public final class AppContext implements AutoCloseable {
     private final UserService userService;
     private final PatronService patronService;
     private final CatalogService catalogService;
+    private final AuthorityService authorityService;
     private final CirculationService circulationService;
     private final ReservationService reservationService;
     private final FineService fineService;
@@ -83,6 +86,7 @@ public final class AppContext implements AutoCloseable {
         JdbcPublisherRepository publisherRepository = new JdbcPublisherRepository(databaseManager);
         JdbcCategoryRepository categoryRepository = new JdbcCategoryRepository(databaseManager);
         JdbcSubjectRepository subjectRepository = new JdbcSubjectRepository(databaseManager);
+        JdbcAuthorityRepository authorityRepository = new JdbcAuthorityRepository(databaseManager);
         JdbcFineRepository fineRepository = new JdbcFineRepository(databaseManager);
         JdbcAuditLogRepository auditLogRepository = new JdbcAuditLogRepository(databaseManager);
 
@@ -92,8 +96,10 @@ public final class AppContext implements AutoCloseable {
         this.authService = new AuthService(userRepository);
         this.userService = new UserService(userRepository, auditLogService, clock);
         this.patronService = new PatronService(patronRepository, auditLogService);
+        this.authorityService = new AuthorityService(authorityRepository, auditLogService);
         this.catalogService = new CatalogService(bookRepository, bookCopyRepository, authorRepository,
-                publisherRepository, categoryRepository, subjectRepository, auditLogService, clock);
+                publisherRepository, categoryRepository, subjectRepository, authorityService,
+                auditLogService, clock);
         this.reservationService = new ReservationService(reservationRepository, patronRepository,
                 bookRepository, auditLogService, settingsService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
@@ -143,6 +149,10 @@ public final class AppContext implements AutoCloseable {
 
     public CatalogService catalogService() {
         return catalogService;
+    }
+
+    public AuthorityService authorityService() {
+        return authorityService;
     }
 
     public CirculationService circulationService() {

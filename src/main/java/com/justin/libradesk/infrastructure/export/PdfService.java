@@ -2,6 +2,7 @@ package com.justin.libradesk.infrastructure.export;
 
 import com.justin.libradesk.domain.model.Loan;
 import com.justin.libradesk.dto.LoanResult;
+import com.justin.libradesk.dto.SpineLabel;
 import com.lowagie.text.Document;
 import com.lowagie.text.DocumentException;
 import com.lowagie.text.Element;
@@ -60,6 +61,35 @@ public class PdfService {
             document.add(new Paragraph("Patron: " + patronName));
             document.add(new Paragraph("Copy barcode: " + barcode));
             document.add(new Paragraph("Due date: " + loan.dueAt().format(STAMP)));
+        });
+    }
+
+    /** Writes a grid of spine/pocket labels (3 per row): call number stacked, then barcode. */
+    public void writeSpineLabels(File file, List<SpineLabel> labels) {
+        Font callFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11);
+        Font barcodeFont = FontFactory.getFont(FontFactory.HELVETICA, 8);
+        render(file, document -> {
+            document.add(new Paragraph("Spine Labels", TITLE_FONT));
+            document.add(new Paragraph(" "));
+            PdfPTable table = new PdfPTable(3);
+            table.setWidthPercentage(100);
+            for (SpineLabel label : labels) {
+                PdfPCell cell = new PdfPCell();
+                cell.setPadding(8);
+                cell.setFixedHeight(72);
+                String callNumber = label.callNumber() == null ? "" : label.callNumber();
+                for (String part : callNumber.split("\\s+")) {
+                    cell.addElement(new Paragraph(part, callFont));
+                }
+                cell.addElement(new Paragraph(label.barcode() == null ? "" : label.barcode(), barcodeFont));
+                table.addCell(cell);
+            }
+            for (int i = labels.size() % 3; i != 0 && i < 3; i++) {
+                table.addCell(new PdfPCell());
+            }
+            if (!labels.isEmpty()) {
+                document.add(table);
+            }
         });
     }
 

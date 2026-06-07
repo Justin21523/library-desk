@@ -35,6 +35,7 @@ public class CatalogService {
     private final PublisherRepository publisherRepository;
     private final CategoryRepository categoryRepository;
     private final SubjectRepository subjectRepository;
+    private final AuthorityService authorityService;
     private final AuditLogService auditLogService;
     private final Clock clock;
 
@@ -44,6 +45,7 @@ public class CatalogService {
                           PublisherRepository publisherRepository,
                           CategoryRepository categoryRepository,
                           SubjectRepository subjectRepository,
+                          AuthorityService authorityService,
                           AuditLogService auditLogService,
                           Clock clock) {
         this.bookRepository = bookRepository;
@@ -52,6 +54,7 @@ public class CatalogService {
         this.publisherRepository = publisherRepository;
         this.categoryRepository = categoryRepository;
         this.subjectRepository = subjectRepository;
+        this.authorityService = authorityService;
         this.auditLogService = auditLogService;
         this.clock = clock;
     }
@@ -226,9 +229,16 @@ public class CatalogService {
     }
 
     private Author findOrCreateAuthor(String name) {
-        return authorRepository.findAll().stream()
-                .filter(a -> a.name().equalsIgnoreCase(name.trim())).findFirst()
-                .orElseGet(() -> authorRepository.save(new Author(null, name.trim())));
+        String trimmed = name.trim();
+        Optional<Author> exact = authorRepository.findAll().stream()
+                .filter(a -> a.name().equalsIgnoreCase(trimmed)).findFirst();
+        if (exact.isPresent()) {
+            return exact.get();
+        }
+        // Authority control: a variant heading maps to the authorized author.
+        Optional<Author> viaVariant = authorityService.resolveAuthor(trimmed)
+                .flatMap(authorRepository::findById);
+        return viaVariant.orElseGet(() -> authorRepository.save(new Author(null, trimmed)));
     }
 
     private Publisher findOrCreatePublisher(String name) {
@@ -238,9 +248,15 @@ public class CatalogService {
     }
 
     private Subject findOrCreateSubject(String term) {
-        return subjectRepository.findAll().stream()
-                .filter(s -> s.term().equalsIgnoreCase(term.trim())).findFirst()
-                .orElseGet(() -> subjectRepository.save(new Subject(null, term.trim())));
+        String trimmed = term.trim();
+        Optional<Subject> exact = subjectRepository.findAll().stream()
+                .filter(s -> s.term().equalsIgnoreCase(trimmed)).findFirst();
+        if (exact.isPresent()) {
+            return exact.get();
+        }
+        Optional<Subject> viaVariant = authorityService.resolveSubject(trimmed)
+                .flatMap(subjectRepository::findById);
+        return viaVariant.orElseGet(() -> subjectRepository.save(new Subject(null, trimmed)));
     }
 
     private static String requireName(String name) {
