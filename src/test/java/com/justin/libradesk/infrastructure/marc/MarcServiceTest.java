@@ -1,8 +1,10 @@
 package com.justin.libradesk.infrastructure.marc;
 
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Book;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.marc4j.marc.Record;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -50,6 +52,17 @@ class MarcServiceTest {
         assertEquals("Effective Java", read.get(0).book().getTitle());
         // The original record is retained for fidelity.
         assertTrue(read.get(0).book().getMarcXml().contains("Effective Java"));
+    }
+
+    @Test
+    void derivesMaterialTypeFromLeader() {
+        MarcLineCodec codec = new MarcLineCodec();
+        Record serial = codec.toRecord("00000nas a2200000 a 4500",
+                List.of(new MarcLine("245", "00", "$aA Journal")));
+
+        MarcData data = marcService.fromXmlString(marcService.toXml(serial));
+
+        assertEquals(MaterialType.SERIAL, data.book().getMaterialType());
     }
 
     @Test

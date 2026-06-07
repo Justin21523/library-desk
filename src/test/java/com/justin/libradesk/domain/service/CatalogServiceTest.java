@@ -1,6 +1,7 @@
 package com.justin.libradesk.domain.service;
 
 import com.justin.libradesk.domain.model.Book;
+import com.justin.libradesk.dto.BatchImportResult;
 import com.justin.libradesk.infrastructure.marc.MarcData;
 import com.justin.libradesk.repository.AuthorRepository;
 import com.justin.libradesk.repository.BookCopyRepository;
@@ -50,8 +51,13 @@ class CatalogServiceTest {
     }
 
     private MarcData marcData(String title) {
+        return marcData(title, null);
+    }
+
+    private MarcData marcData(String title, String isbn) {
         Book book = new Book();
         book.setTitle(title);
+        book.setIsbn(isbn);
         book.setMarcXml("<record/>");
         return new MarcData(book, List.of(), List.of(), null);
     }
@@ -77,5 +83,21 @@ class CatalogServiceTest {
         assertEquals(7L, captor.getValue().getId());
         assertEquals("<record/>", captor.getValue().getMarcXml());
         verify(auditLogService).record("admin", "BOOK_UPDATED", "Book", 7L, "Edited Title");
+    }
+
+    @Test
+    void importBatchSkipsDuplicatesByIsbn() {
+        Book existing = new Book(1L, "9780134685991", "Existing", null, null, 2018, LocalDateTime.now());
+        when(bookRepository.findAll()).thenReturn(List.of(existing));
+        when(bookRepository.findByIsbn("222")).thenReturn(java.util.Optional.empty());
+        when(bookRepository.save(any(Book.class))).thenAnswer(i -> i.getArgument(0));
+
+        BatchImportResult result = catalogService.importBatch(List.of(
+                marcData("Dup", "978-0-13-468599-1"),   // same ISBN as existing -> duplicate
+                marcData("Fresh", "222")), "admin");      // new -> imported
+
+        assertEquals(1, result.imported());
+        assertEquals(1, result.duplicates().size());
+        assertEquals(0, result.errors().size());
     }
 }

@@ -1,5 +1,6 @@
 package com.justin.libradesk.domain.service;
 
+import com.justin.libradesk.domain.enumtype.RecordStatus;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.Subject;
@@ -19,6 +20,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -49,7 +51,7 @@ class CatalogSearchServiceTest {
         Book java = book(100L, "Effective Java", 2018, 1L, 10L);
         Book patterns = book(200L, "Design Patterns", 1994, 2L, 11L);
         Book unrelated = book(300L, "Cooking 101", 2010, null, null);
-        when(bookRepository.findAll()).thenReturn(List.of(java, patterns, unrelated));
+        lenient().when(bookRepository.findAll()).thenReturn(List.of(java, patterns, unrelated));
     }
 
     private Book book(long id, String title, int year, Long authorId, Long subjectId) {
@@ -87,5 +89,14 @@ class CatalogSearchServiceTest {
         assertEquals(1L, result.authorFacet().get("Bloch, Joshua"));
         assertEquals(1L, result.yearFacet().get("2018"));
         assertEquals(2, result.subjectFacet().size()); // Java, Patterns (Cooking has none)
+    }
+
+    @Test
+    void excludesSuppressedRecordsFromTheOpac() {
+        Book suppressed = book(400L, "Hidden Title", 2020, null, null);
+        suppressed.setRecordStatus(RecordStatus.SUPPRESSED);
+        when(bookRepository.findAll()).thenReturn(List.of(suppressed));
+
+        assertEquals(0, service.search("hidden").records().size());
     }
 }

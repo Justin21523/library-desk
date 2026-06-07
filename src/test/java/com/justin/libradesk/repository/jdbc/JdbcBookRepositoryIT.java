@@ -117,6 +117,20 @@ class JdbcBookRepositoryIT extends AbstractRepositoryIT {
         assertEquals(List.of(subjectId), found.getSubjectIds());
     }
 
+    @Test
+    void recordStatusRoundTripsAndDefaultsToComplete() {
+        Book suppressed = newBook("978-rs", "Suppressed");
+        suppressed.setRecordStatus(com.justin.libradesk.domain.enumtype.RecordStatus.SUPPRESSED);
+        Book saved = repository.save(suppressed);
+        assertEquals(com.justin.libradesk.domain.enumtype.RecordStatus.SUPPRESSED,
+                repository.findById(saved.getId()).orElseThrow().getRecordStatus());
+
+        // A book saved without a status falls back to the COMPLETE default.
+        Book plain = repository.save(newBook("978-rs2", "Plain"));
+        assertEquals(com.justin.libradesk.domain.enumtype.RecordStatus.COMPLETE,
+                repository.findById(plain.getId()).orElseThrow().getRecordStatus());
+    }
+
     private long insertSubject(String term) {
         try (var c = databaseManager.getConnection();
              var ps = c.prepareStatement(
