@@ -21,4 +21,10 @@ public interface AuthorityRepository {
     Optional<Long> findSubjectIdByVariant(String variantForm);
 
     List<String> listSubjectVariants(long subjectId);
+
+    /** Repoints all links/variants from one author onto another and deletes the source. */
+    void mergeAuthor(long fromId, long intoId);
+
+    /** Repoints all links/variants from one subject onto another and deletes the source. */
+    void mergeSubject(long fromId, long intoId);
 }

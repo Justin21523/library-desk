@@ -18,6 +18,7 @@ import com.justin.libradesk.domain.service.UserService;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
 import com.justin.libradesk.infrastructure.export.CsvService;
 import com.justin.libradesk.infrastructure.export.PdfService;
+import com.justin.libradesk.infrastructure.marc.LocAuthorityClient;
 import com.justin.libradesk.infrastructure.marc.LocSruClient;
 import com.justin.libradesk.infrastructure.marc.MarcService;
 import com.justin.libradesk.repository.jdbc.JdbcAuditLogRepository;
@@ -98,7 +99,8 @@ public final class AppContext implements AutoCloseable {
         this.authService = new AuthService(userRepository);
         this.userService = new UserService(userRepository, auditLogService, clock);
         this.patronService = new PatronService(patronRepository, auditLogService);
-        this.authorityService = new AuthorityService(authorityRepository, auditLogService);
+        this.authorityService = new AuthorityService(authorityRepository, authorRepository,
+                subjectRepository, new LocAuthorityClient(config), auditLogService);
         this.catalogService = new CatalogService(bookRepository, bookCopyRepository, authorRepository,
                 publisherRepository, categoryRepository, subjectRepository, authorityService,
                 auditLogService, clock);
