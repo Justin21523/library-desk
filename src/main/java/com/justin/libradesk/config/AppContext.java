@@ -135,6 +135,11 @@ public final class AppContext implements AutoCloseable {
         return instance;
     }
 
+    /** @return the context if initialised, otherwise {@code null} (no exception). */
+    public static AppContext tryGet() {
+        return instance;
+    }
+
     public AppConfig config() {
         return config;
     }

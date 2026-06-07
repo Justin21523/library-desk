@@ -23,7 +23,7 @@ import java.util.Properties;
  * <p>Runs only under the {@code it} Maven profile ({@code mvn verify -Pit}),
  * which requires Docker.
  */
-abstract class AbstractRepositoryIT {
+public abstract class AbstractRepositoryIT {
 
     // No nanoseconds: PostgreSQL TIMESTAMP has microsecond precision, so a fixed
     // second-aligned value round-trips exactly and keeps assertions stable.
