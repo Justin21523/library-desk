@@ -79,6 +79,11 @@ public class MainLayoutController {
     }
 
     @FXML
+    private void onCatalogSearch() {
+        load("/fxml/CatalogSearchView.fxml");
+    }
+
+    @FXML
     private void onCatalog() {
         load("/fxml/CatalogView.fxml");
     }

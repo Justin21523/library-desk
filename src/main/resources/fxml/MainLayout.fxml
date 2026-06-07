@@ -14,6 +14,7 @@
         <VBox styleClass="sidebar">
             <Label fx:id="userLabel" text="" textFill="WHITE"/>
             <Button text="Dashboard"   onAction="#onDashboard"/>
+            <Button text="Catalog Search" onAction="#onCatalogSearch"/>
             <Button fx:id="catalogButton"     text="Catalog"      onAction="#onCatalog"/>
             <Button fx:id="catalogDataButton" text="Catalog Data" onAction="#onReferenceData"/>
             <Button fx:id="copiesButton"      text="Book Copies"  onAction="#onCopies"/>
