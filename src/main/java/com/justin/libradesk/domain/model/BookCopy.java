@@ -16,6 +16,7 @@ public class BookCopy {
     private CopyStatus status;
     private String shelfLocation;
     private Long locationId;
+    private Long holdingId;
     private LocalDateTime createdAt;
 
     public BookCopy() {
@@ -83,6 +84,15 @@ public class BookCopy {
 
     public void setLocationId(Long locationId) {
         this.locationId = locationId;
+    }
+
+    /** @return the id of the {@code Holding} this copy belongs to, or {@code null}. */
+    public Long getHoldingId() {
+        return holdingId;
+    }
+
+    public void setHoldingId(Long holdingId) {
+        this.holdingId = holdingId;
     }
 
     public LocalDateTime getCreatedAt() {

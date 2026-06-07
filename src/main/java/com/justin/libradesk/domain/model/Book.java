@@ -36,6 +36,7 @@ public class Book {
     private String callNumber;
     private ClassificationScheme classificationScheme;
     private RecordStatus recordStatus;
+    private Long workId;
 
     /** Author ids associated with this book (populated by the catalog service). */
     private final List<Long> authorIds = new ArrayList<>();
@@ -215,5 +216,14 @@ public class Book {
 
     public void setRecordStatus(RecordStatus recordStatus) {
         this.recordStatus = recordStatus;
+    }
+
+    /** @return the id of the FRBR {@code Work} this bib belongs to, or {@code null} if ungrouped. */
+    public Long getWorkId() {
+        return workId;
+    }
+
+    public void setWorkId(Long workId) {
+        this.workId = workId;
     }
 }
