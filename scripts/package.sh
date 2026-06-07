@@ -25,7 +25,7 @@ mvn -q dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory="${
 
 echo ">> Creating a slim runtime with jlink"
 jlink \
-  --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.management,java.xml,java.scripting,jdk.unsupported,jdk.crypto.ec \
+  --add-modules java.base,java.desktop,java.logging,java.naming,java.sql,java.management,java.xml,java.scripting,jdk.unsupported,jdk.crypto.ec,jdk.httpserver \
   --strip-debug --no-header-files --no-man-pages --compress=zip-6 \
   --output "${RUNTIME}"
 
