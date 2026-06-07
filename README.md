@@ -5,12 +5,13 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 12 (cataloging — authority control & classification). On top of
-> Phases 10–11 (MARC fields, import/export, LoC copy cataloging): authors and
-> subjects now support **authority see-from variants** (a variant heading resolves
-> to its authorized record on import); books carry a **DDC/LCC call number** with a
-> shelf-order key; and **spine labels** print to PDF. An OPAC follows; **BIBFRAME**
-> is the longer-term direction.
+> **Status:** Phase 13 (cataloging — OPAC) — the cataloging track (10–13) is
+> complete. A reader-facing **Catalog Search** screen offers keyword search across
+> title/author/subject/ISBN, **facet narrowing** (author, subject, year, language,
+> material type), and a full record detail. Earlier cataloging phases added MARC21
+> fields + import/export, Library of Congress copy cataloging, authority see-from
+> variants, DDC/LCC call numbers, and spine labels. A standalone public OPAC and
+> **BIBFRAME** remain noted future directions.
 
 ## Tech stack
 

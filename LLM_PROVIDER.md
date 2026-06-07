@@ -172,6 +172,12 @@ Read these to understand the big picture quickly:
   manually or from MARC 082/050; `util/CallNumber.shelfKey` gives a comparable
   shelf-order key (pragmatic, not full LC shelflisting). `PdfService.writeSpineLabels`
   prints labels (call number stacked + barcode) from the Book Copies screen.
+- **OPAC search** is `CatalogSearchService.search(keyword)`: in-memory keyword match
+  over title/ISBN/author/subject plus facet count maps (author/subject/year/language/
+  material), returning `CatalogSearchResult`/`CatalogRecord`. The Catalog Search
+  screen (ungated, all roles) populates facet ComboBoxes from the result and narrows
+  the loaded set in the controller; facet labels carry a "(count)" suffix stripped on
+  use.
 
 ### Phase status (important when reading skeletons)
 
@@ -187,8 +193,9 @@ A **cataloging track** is now in progress on top of that: **Phase 10 (done)** �
 richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util;
 **Phase 11 (done)** — copy cataloging from the Library of Congress (SRU);
 **Phase 12 (done)** — authority see-from variants, DDC/LCC call numbers + shelf-order
-key, spine-label PDF. **Planned:** Phase 13 — OPAC + faceted search. BIBFRAME is
-noted as the longer-term direction. When extending, follow the
+key, spine-label PDF; **Phase 13 (done)** — OPAC catalog search with facets. The
+cataloging track (10–13) is complete. Possible future work: a standalone public OPAC
+and BIBFRAME/linked-data export. When extending, follow the
 implemented repositories/services and the existing feature controllers as the
 reference pattern.
 
