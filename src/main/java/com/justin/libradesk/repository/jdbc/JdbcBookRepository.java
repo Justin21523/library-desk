@@ -63,12 +63,12 @@ public class JdbcBookRepository implements BookRepository {
                 INSERT INTO books (isbn, title, publisher_id, category_id, published_year,
                                    edition, pub_place, extent, series, language, material_type,
                                    control_number, summary, marc_xml, call_number,
-                                   classification_scheme, record_status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                   classification_scheme, record_status, work_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bindBook(ps, book);
-            ps.setTimestamp(18, Timestamp.valueOf(book.getCreatedAt()));
+            ps.setTimestamp(19, Timestamp.valueOf(book.getCreatedAt()));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -84,17 +84,17 @@ public class JdbcBookRepository implements BookRepository {
                    SET isbn = ?, title = ?, publisher_id = ?, category_id = ?, published_year = ?,
                        edition = ?, pub_place = ?, extent = ?, series = ?, language = ?,
                        material_type = ?, control_number = ?, summary = ?, marc_xml = ?,
-                       call_number = ?, classification_scheme = ?, record_status = ?
+                       call_number = ?, classification_scheme = ?, record_status = ?, work_id = ?
                  WHERE id = ?
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             bindBook(ps, book);
-            ps.setLong(18, book.getId());
+            ps.setLong(19, book.getId());
             ps.executeUpdate();
         }
     }
 
-    /** Binds the 17 shared book columns (1..17); callers set the trailing column (18). */
+    /** Binds the 18 shared book columns (1..18); callers set the trailing column (19). */
     private void bindBook(PreparedStatement ps, Book book) throws SQLException {
         ps.setString(1, book.getIsbn());
         ps.setString(2, book.getTitle());
@@ -116,6 +116,7 @@ public class JdbcBookRepository implements BookRepository {
         // record_status is NOT NULL; default COMPLETE when the in-memory book lacks one.
         ps.setString(17, book.getRecordStatus() == null
                 ? RecordStatus.COMPLETE.name() : book.getRecordStatus().name());
+        setNullableLong(ps, 18, book.getWorkId());
     }
 
     /** Replaces a book's link rows in a junction table with the given ids. */
@@ -251,6 +252,7 @@ public class JdbcBookRepository implements BookRepository {
         String scheme = rs.getString("classification_scheme");
         book.setClassificationScheme(scheme != null ? ClassificationScheme.valueOf(scheme) : null);
         book.setRecordStatus(RecordStatus.valueOf(rs.getString("record_status")));
+        book.setWorkId(rs.getObject("work_id", Long.class));
         return book;
     }
 

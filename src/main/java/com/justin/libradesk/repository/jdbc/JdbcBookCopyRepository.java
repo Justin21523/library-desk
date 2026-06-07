@@ -31,8 +31,9 @@ public class JdbcBookCopyRepository implements BookCopyRepository {
 
     private BookCopy insert(BookCopy copy) {
         String sql = """
-                INSERT INTO book_copies (book_id, barcode, status, shelf_location, location_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO book_copies (book_id, barcode, status, shelf_location, location_id,
+                                         holding_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 """;
         try (Connection c = db.getConnection();
              PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
@@ -41,7 +42,8 @@ public class JdbcBookCopyRepository implements BookCopyRepository {
             ps.setString(3, copy.getStatus().name());
             ps.setString(4, copy.getShelfLocation());
             setNullableLong(ps, 5, copy.getLocationId());
-            ps.setTimestamp(6, Timestamp.valueOf(copy.getCreatedAt()));
+            setNullableLong(ps, 6, copy.getHoldingId());
+            ps.setTimestamp(7, Timestamp.valueOf(copy.getCreatedAt()));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -57,7 +59,8 @@ public class JdbcBookCopyRepository implements BookCopyRepository {
     private BookCopy update(BookCopy copy) {
         String sql = """
                 UPDATE book_copies
-                   SET book_id = ?, barcode = ?, status = ?, shelf_location = ?, location_id = ?
+                   SET book_id = ?, barcode = ?, status = ?, shelf_location = ?, location_id = ?,
+                       holding_id = ?
                  WHERE id = ?
                 """;
         try (Connection c = db.getConnection();
@@ -67,7 +70,8 @@ public class JdbcBookCopyRepository implements BookCopyRepository {
             ps.setString(3, copy.getStatus().name());
             ps.setString(4, copy.getShelfLocation());
             setNullableLong(ps, 5, copy.getLocationId());
-            ps.setLong(6, copy.getId());
+            setNullableLong(ps, 6, copy.getHoldingId());
+            ps.setLong(7, copy.getId());
             ps.executeUpdate();
             return copy;
         } catch (SQLException e) {
@@ -152,6 +156,8 @@ public class JdbcBookCopyRepository implements BookCopyRepository {
                 rs.getTimestamp("created_at").toLocalDateTime());
         long locationId = rs.getLong("location_id");
         copy.setLocationId(rs.wasNull() ? null : locationId);
+        long holdingId = rs.getLong("holding_id");
+        copy.setHoldingId(rs.wasNull() ? null : holdingId);
         return copy;
     }
 
