@@ -170,11 +170,20 @@ Read these to understand the big picture quickly:
   `LocSruClientTest` runs offline against `test/resources/marc/loc-sru-sample.xml`;
   the Catalog "Search LoC" dialog imports the chosen record through
   `CatalogService.importMarc`.
-- **Authority control** is lightweight: `authors.name`/`subjects.term` are the
-  *authorized* headings; `author_variants`/`subject_variants` hold see-from forms
-  (`AuthorityRepository`/`AuthorityService`). `CatalogService.findOrCreateAuthor/
-  Subject` checks an exact authorized match, then a variant (`resolveAuthor/Subject`),
-  before creating — so importing a variant heading reuses the authorized record.
+- **Authority control:** `authors.name`/`subjects.term` are the *authorized* headings;
+  `author_variants`/`subject_variants` hold see-from forms (`AuthorityRepository`/
+  `AuthorityService`). `CatalogService.findOrCreateAuthor/Subject` checks an exact
+  authorized match, then a variant (`resolveAuthor/Subject`), before creating.
+  `AuthorityService` also does **global heading change** (`renameAuthor/Subject` — bibs
+  link by id so all records reflect it), **merge/de-dup** (`AuthorityRepository.merge*`
+  repoints `book_authors`/variants then deletes the source, transactionally), and
+  **online lookup** via `LocAuthorityClient` (id.loc.gov suggest2 JSON, Jackson, HTTP
+  seam + offline fixture). A full MARC-authority-record (1xx/4xx/5xx/670) subsystem is
+  intentionally not built — these stay 2-arg `Author`/`Subject` records.
+- **Cataloging completeness:** `books.record_status` (IN_PROCESS/COMPLETE/SUPPRESSED,
+  V4; SUPPRESSED hidden by `CatalogSearchService`); `MarcMapper` derives `MaterialType`
+  from the leader; `CatalogService.importBatch` dedups by ISBN/control number
+  (`BatchImportResult`); `MarcTemplates` supplies New-MARC workforms.
 - **Classification:** `books.call_number` + `classification_scheme` (DDC/LCC), set
   manually or from MARC 082/050; `util/CallNumber.shelfKey` gives a comparable
   shelf-order key (pragmatic, not full LC shelflisting). `PdfService.writeSpineLabels`
@@ -208,10 +217,12 @@ richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util;
 **Phase 12 (done)** — authority see-from variants, DDC/LCC call numbers + shelf-order
 key, spine-label PDF; **Phase 13 (done)** — OPAC catalog search with facets. A
 professional-ILS track (14–17) is now underway: **Phase 14a (done)** — full
-field-level MARC editor with `marc_xml` as source of truth. **Planned:** 14b (batch
-import + dedup, record status), 15 (full authority records + global heading change +
-id.loc.gov), 16 (circulation policy matrix, calendar, branches, blocks, payments,
-email notices), 17 (MFHD/FRBR/serials + REST/OAI-PMH/SRU server + job framework). When extending, follow the
+field-level MARC editor with `marc_xml` as source of truth; **14b (done)** — record
+status + OPAC suppression, leader material type, batch import + dedup, workforms;
+**15 (done)** — authority control (rename / merge / id.loc.gov lookup). **Planned:**
+16 (circulation policy matrix, calendar, branches, blocks, payments, email notices),
+17 (MFHD/FRBR/serials + REST/OAI-PMH/SRU server + job framework). A full
+MARC-authority-record subsystem remains a noted future step. When extending, follow the
 implemented repositories/services and the existing feature controllers as the
 reference pattern.
 
