@@ -2,6 +2,7 @@ package com.justin.libradesk.domain.model;
 
 import com.justin.libradesk.domain.enumtype.ClassificationScheme;
 import com.justin.libradesk.domain.enumtype.MaterialType;
+import com.justin.libradesk.domain.enumtype.RecordStatus;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ public class Book {
     private String marcXml;
     private String callNumber;
     private ClassificationScheme classificationScheme;
+    private RecordStatus recordStatus;
 
     /** Author ids associated with this book (populated by the catalog service). */
     private final List<Long> authorIds = new ArrayList<>();
@@ -205,5 +207,13 @@ public class Book {
 
     public void setClassificationScheme(ClassificationScheme classificationScheme) {
         this.classificationScheme = classificationScheme;
+    }
+
+    public RecordStatus getRecordStatus() {
+        return recordStatus;
+    }
+
+    public void setRecordStatus(RecordStatus recordStatus) {
+        this.recordStatus = recordStatus;
     }
 }

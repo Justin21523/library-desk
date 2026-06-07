@@ -1,5 +1,6 @@
 package com.justin.libradesk.domain.service;
 
+import com.justin.libradesk.domain.enumtype.RecordStatus;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.dto.CatalogRecord;
 import com.justin.libradesk.dto.CatalogSearchResult;
@@ -45,6 +46,7 @@ public class CatalogSearchService {
         publisherRepository.findAll().forEach(p -> publisherNames.put(p.id(), p.name()));
 
         List<CatalogRecord> all = bookRepository.findAll().stream()
+                .filter(book -> book.getRecordStatus() != RecordStatus.SUPPRESSED) // OPAC hides suppressed
                 .map(book -> new CatalogRecord(book,
                         names(book.getAuthorIds(), authorNames),
                         names(book.getSubjectIds(), subjectTerms),

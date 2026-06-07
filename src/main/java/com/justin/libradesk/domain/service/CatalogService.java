@@ -2,12 +2,14 @@ package com.justin.libradesk.domain.service;
 
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.enumtype.MaterialType;
+import com.justin.libradesk.domain.enumtype.RecordStatus;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
 import com.justin.libradesk.domain.model.Subject;
+import com.justin.libradesk.dto.BatchImportResult;
 import com.justin.libradesk.infrastructure.marc.MarcData;
 import com.justin.libradesk.repository.AuthorRepository;
 import com.justin.libradesk.repository.BookCopyRepository;
@@ -15,13 +17,17 @@ import com.justin.libradesk.repository.BookRepository;
 import com.justin.libradesk.repository.CategoryRepository;
 import com.justin.libradesk.repository.PublisherRepository;
 import com.justin.libradesk.repository.SubjectRepository;
+import com.justin.libradesk.util.Isbn;
 import com.justin.libradesk.validation.ValidationException;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Manages the catalog: bibliographic records ({@link Book}) and their physical,
@@ -81,9 +87,69 @@ public class CatalogService {
         if (book.getMaterialType() == null) {
             book.setMaterialType(MaterialType.BOOK);
         }
+        if (book.getRecordStatus() == null) {
+            book.setRecordStatus(RecordStatus.COMPLETE);
+        }
         Book saved = bookRepository.save(book);
         auditLogService.record(actor, "BOOK_ADDED", "Book", saved.getId(), book.getTitle());
         return saved;
+    }
+
+    /** Changes a record's workflow status (e.g. SUPPRESS from the OPAC). */
+    public Book setRecordStatus(Long bookId, RecordStatus status, String actor) {
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new ValidationException("Book not found: " + bookId));
+        book.setRecordStatus(status);
+        Book saved = bookRepository.save(book);
+        auditLogService.record(actor, "RECORD_STATUS_CHANGED", "Book", bookId, status.name());
+        return saved;
+    }
+
+    /**
+     * Imports many MARC records, skipping ones that duplicate an existing book (or an
+     * earlier record in the same batch) by ISBN or control number.
+     */
+    public BatchImportResult importBatch(List<MarcData> records, String actor) {
+        Set<String> seenIsbns = new HashSet<>();
+        Set<String> seenControls = new HashSet<>();
+        for (Book existing : bookRepository.findAll()) {
+            addKey(seenIsbns, Isbn.normalize(existing.getIsbn()));
+            addKey(seenControls, existing.getControlNumber());
+        }
+
+        int imported = 0;
+        List<String> duplicates = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+        for (MarcData data : records) {
+            Book book = data.book();
+            String label = book.getTitle() == null ? "(untitled)" : book.getTitle();
+            String isbn = Isbn.normalize(book.getIsbn());
+            String control = blankToNull(book.getControlNumber());
+            if ((isbn != null && seenIsbns.contains(isbn))
+                    || (control != null && seenControls.contains(control))) {
+                duplicates.add(label);
+                continue;
+            }
+            try {
+                importMarc(data, actor);
+                imported++;
+                addKey(seenIsbns, isbn);
+                addKey(seenControls, control);
+            } catch (RuntimeException e) {
+                errors.add(label + ": " + e.getMessage());
+            }
+        }
+        return new BatchImportResult(imported, duplicates, errors);
+    }
+
+    private static void addKey(Set<String> set, String value) {
+        if (value != null && !value.isBlank()) {
+            set.add(value);
+        }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     public List<Book> listBooks() {

@@ -1,8 +1,10 @@
 package com.justin.libradesk.infrastructure.marc;
 
 import com.justin.libradesk.domain.enumtype.ClassificationScheme;
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Book;
 import org.marc4j.marc.DataField;
+import org.marc4j.marc.Leader;
 import org.marc4j.marc.MarcFactory;
 import org.marc4j.marc.Record;
 import org.marc4j.marc.Subfield;
@@ -48,6 +50,11 @@ public class MarcMapper {
         authors.addAll(subfields(record, "700", 'a'));
 
         List<String> subjects = new ArrayList<>(subfields(record, "650", 'a'));
+
+        Leader leader = record.getLeader();
+        if (leader != null) {
+            book.setMaterialType(materialTypeFrom(leader.toString()));
+        }
 
         // Call number: prefer DDC (082) then LCC (050).
         String ddc = firstSubfield(record, "082", 'a', MarcMapper::trim);
@@ -173,6 +180,20 @@ public class MarcMapper {
             }
         }
         return values;
+    }
+
+    /** Derives a coarse material type from the Leader (pos 6 type, pos 7 bib level). */
+    private MaterialType materialTypeFrom(String leader) {
+        char type = leader.length() > 6 ? leader.charAt(6) : 'a';
+        char level = leader.length() > 7 ? leader.charAt(7) : 'm';
+        if (level == 's' || level == 'b') {
+            return MaterialType.SERIAL;
+        }
+        return switch (type) {
+            case 'm' -> MaterialType.EBOOK;
+            case 'g', 'i', 'j', 'k', 'o', 'r' -> MaterialType.AUDIOVISUAL;
+            default -> MaterialType.BOOK;
+        };
     }
 
     private Integer year(String value) {
