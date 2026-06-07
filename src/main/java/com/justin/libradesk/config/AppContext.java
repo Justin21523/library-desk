@@ -5,6 +5,7 @@ import com.justin.libradesk.domain.service.AuditLogService;
 import com.justin.libradesk.domain.service.AuthService;
 import com.justin.libradesk.domain.service.AuthorityService;
 import com.justin.libradesk.domain.service.BorrowingPolicy;
+import com.justin.libradesk.domain.service.CatalogSearchService;
 import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.domain.service.CirculationService;
 import com.justin.libradesk.domain.service.DashboardService;
@@ -55,6 +56,7 @@ public final class AppContext implements AutoCloseable {
     private final UserService userService;
     private final PatronService patronService;
     private final CatalogService catalogService;
+    private final CatalogSearchService catalogSearchService;
     private final AuthorityService authorityService;
     private final CirculationService circulationService;
     private final ReservationService reservationService;
@@ -100,6 +102,8 @@ public final class AppContext implements AutoCloseable {
         this.catalogService = new CatalogService(bookRepository, bookCopyRepository, authorRepository,
                 publisherRepository, categoryRepository, subjectRepository, authorityService,
                 auditLogService, clock);
+        this.catalogSearchService = new CatalogSearchService(bookRepository, authorRepository,
+                subjectRepository, publisherRepository);
         this.reservationService = new ReservationService(reservationRepository, patronRepository,
                 bookRepository, auditLogService, settingsService, clock);
         this.circulationService = new CirculationService(patronRepository, bookCopyRepository,
@@ -153,6 +157,10 @@ public final class AppContext implements AutoCloseable {
 
     public AuthorityService authorityService() {
         return authorityService;
+    }
+
+    public CatalogSearchService catalogSearchService() {
+        return catalogSearchService;
     }
 
     public CirculationService circulationService() {
