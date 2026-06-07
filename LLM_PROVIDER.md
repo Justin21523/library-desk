@@ -102,13 +102,14 @@ Read these to understand the big picture quickly:
   the loan still counts against the patron's limit and can still be returned, so
   `JdbcLoanRepository`'s "active" queries match `status IN ('ACTIVE','OVERDUE')`
   while `findOverdue()` stays ACTIVE-only (idempotent sweep).
-- **Background maintenance** runs on a daemon thread via
-  `infrastructure/scheduling/MaintenanceScheduler` (interval `overdue.sweep.minutes`),
-  started/stopped by `LibraDeskApplication`. Each tick runs `markOverdueLoans()`,
-  `ReservationService.expireStaleReady(...)` (READY holds older than
-  `reservation.ready.expiry.days` expire and the next patron is promoted — this is
-  why reservations carry `ready_at`), and the three `NoticeService` sweeps. The
-  overdue sweep can also be triggered manually from Reports.
+- **Background jobs (Phase 17)** run on a daemon thread via
+  `infrastructure/scheduling/JobScheduler` (a generic engine: `register(Job, minutes)`,
+  `runNow(name)`, `list()` with last-run/result), wired and started by `AppContext`/
+  `LibraDeskApplication`. The maintenance tasks are registered as named `Job`s
+  (overdue sweep, reservation-expiry, the three `NoticeService` notices, serials-claim),
+  each individually runnable from the Jobs screen. READY holds older than
+  `reservation.ready.expiry.days` expire and the next patron is promoted (why
+  reservations carry `ready_at`). The former `MaintenanceScheduler` was replaced by this.
 - **Circulation policy matrix (Phase 16):** `circ_policies` (patron type × material
   type → loan days, max loans, renewal limit, max holds, fine/day, fine cap, grace)
   resolved by `CircPolicyService.policyFor` — an exact material row wins, then the
@@ -224,6 +225,30 @@ Read these to understand the big picture quickly:
   **The MARC record is the bib source of truth**: `CatalogService.saveFromMarc` stores
   the full `marc_xml` and re-projects the structured columns (so editor changes outside
   the mapped subset are preserved). `MarcService.toXml/parseXml` expose raw Record I/O.
+- **Bibliographic structure (Phase 17):** FRBR `works` (+ `books.work_id`) grouped by a
+  normalized title+author key (`WorkService.groupIntoWorks`/`manifestationsOf`); MFHD
+  `holdings` (+ `book_copies.holding_id`) via `HoldingService`; serials `subscriptions`/
+  `serial_issues` via `SerialsService` (subscribe → `expectNext` advances the predicted
+  date by `Frequency` → `checkIn` → `claimLate`); 856 `e_links` via `ELinkService` whose
+  `checkLinks` verifies URLs through the injectable `infrastructure/web/LinkChecker` seam
+  (default `HttpLinkChecker`; tests use a fake). Screens: Serials, Works, Holdings & Links.
+- **Interoperability server (Phase 17):** `infrastructure/web/ApiServer` over the JDK
+  `com.sun.net.httpserver.HttpServer` (no web framework), built in `AppContext` and
+  started by `LibraDeskApplication` only when `api.server.enabled=true` (port
+  `api.server.port`); tests start it on an ephemeral port. Read-only handlers: `RestHandler`
+  (`/api` JSON via Jackson — books/items/patrons), `OaiPmhHandler` (`/oai` — Identify/
+  ListMetadataFormats/ListIdentifiers/ListRecords/GetRecord, `marcxml`+`oai_dc`), and
+  `SruHandler` (`/sru` searchRetrieve → MARCXML). MARCXML reuses
+  `MarcService.toXmlString(CatalogService.toMarcData(book))`; `WebSupport.marcRecordElement`
+  extracts marc4j's prefixed `<marc:record>` and re-declares its namespace for embedding.
+  Packaging adds the `jdk.httpserver` module.
+- **i18n (Phase 17):** `util/Messages` holds the active `ResourceBundle`
+  (`i18n/messages.properties` English default, `messages_zh_TW.properties`), selected from
+  the `ui.locale` setting at startup. Every `FXMLLoader` site passes `Messages.bundle()`
+  so FXML `%key` references resolve; the shell (`MainLayout`) is fully keyed and the
+  Settings screen has a language picker. Remaining screens are migrated incrementally —
+  any `%key` used must exist in **both** bundles or `FXMLLoader` fails. Source/identifiers/
+  logs/audit stay English.
 
 ### Phase status (important when reading skeletons)
 
@@ -246,10 +271,13 @@ status + OPAC suppression, leader material type, batch import + dedup, workforms
 **15 (done)** — authority control (rename / merge / id.loc.gov lookup); **16 (done)** —
 circulation policy matrix, library calendar, branches/locations, patron blocks,
 billing (typed fees + partial payments + lost/damaged), and notices via the Mailer
-seam. **Planned:** 17 (MFHD/FRBR/serials + REST/OAI-PMH/SRU server + job framework).
-A full MARC-authority-record subsystem remains a noted future step. When extending, follow the
-implemented repositories/services and the existing feature controllers as the
-reference pattern.
+seam; **17 (done)** — bibliographic structure (FRBR works, MFHD holdings, serials,
+856 e-links), an interoperability server (REST/OAI-PMH/SRU over the JDK HttpServer),
+a generalized job framework (`JobScheduler`), and zh-Hant i18n (English default).
+**The planned roadmap (Phases 1–17) is now complete.** Remaining noted future steps:
+a full MARC-authority-record subsystem, full CQL for SRU, and complete i18n string
+coverage across every screen. When extending, follow the implemented
+repositories/services and the existing feature controllers as the reference pattern.
 
 ## Language rules
 

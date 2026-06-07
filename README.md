@@ -5,15 +5,15 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 16 (collection policy + circulation upgrade). On top of the
-> MARC editor (14a), cataloging completeness (14b), and authority control (15),
-> this phase adds a **circulation policy matrix** (patron type × material type →
-> loan period, limits, fine rate/cap, grace), a **library calendar** (due dates and
-> overdue fines skip closed days), **branches / shelving locations**, **patron
-> blocks** and **renewal/hold limits**, **billing** (typed fees, partial payments,
-> waive-with-reason, lost/damaged-item charges), and **notices** (due-soon / overdue
-> / hold-ready) via a pluggable mailer seam. Coming next: bibliographic structure &
-> interoperability — MFHD/FRBR/serials + REST/OAI-PMH/SRU (17).
+> **Status:** Phase 17 (bibliographic structure + interoperability) — the planned
+> roadmap (Phases 1–17) is complete. On top of circulation policy & billing (16),
+> this final phase adds **bibliographic structure** (FRBR work grouping, MFHD
+> holdings, a serials module with issue check-in/claiming, and 856 e-resource links
+> with link checking), a standards-based **interoperability server** — read-only
+> **REST** (JSON), **OAI-PMH** (MARCXML/Dublin Core harvesting), and **SRU**
+> (MARCXML search) over the JDK HTTP server, off by default and config-gated — a
+> generalized **background job framework** (run on demand from a Jobs screen), and
+> **internationalization** (Traditional Chinese, English default).
 
 ## Tech stack
 
