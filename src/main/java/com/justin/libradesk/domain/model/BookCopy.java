@@ -15,6 +15,7 @@ public class BookCopy {
     private String barcode;
     private CopyStatus status;
     private String shelfLocation;
+    private Long locationId;
     private LocalDateTime createdAt;
 
     public BookCopy() {
@@ -73,6 +74,15 @@ public class BookCopy {
 
     public void setShelfLocation(String shelfLocation) {
         this.shelfLocation = shelfLocation;
+    }
+
+    /** @return the id of the assigned shelving {@code Location}, or {@code null} if unassigned. */
+    public Long getLocationId() {
+        return locationId;
+    }
+
+    public void setLocationId(Long locationId) {
+        this.locationId = locationId;
     }
 
     public LocalDateTime getCreatedAt() {

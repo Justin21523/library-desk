@@ -7,5 +7,7 @@ package com.justin.libradesk.domain.enumtype;
 public enum LoanStatus {
     ACTIVE,
     RETURNED,
-    OVERDUE
+    OVERDUE,
+    /** Closed because the copy was declared lost (a replacement charge is raised). */
+    LOST
 }

@@ -16,6 +16,7 @@ public class Loan {
     private LocalDateTime dueAt;
     private LocalDateTime returnedAt;
     private LoanStatus status;
+    private int renewalCount;
 
     public Loan() {
     }
@@ -93,5 +94,14 @@ public class Loan {
 
     public void setStatus(LoanStatus status) {
         this.status = status;
+    }
+
+    /** @return how many times this loan has been renewed (checked against the policy limit). */
+    public int getRenewalCount() {
+        return renewalCount;
+    }
+
+    public void setRenewalCount(int renewalCount) {
+        this.renewalCount = renewalCount;
     }
 }

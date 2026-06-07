@@ -1,5 +1,6 @@
 package com.justin.libradesk.domain.model;
 
+import com.justin.libradesk.domain.enumtype.FeeType;
 import com.justin.libradesk.domain.enumtype.FineStatus;
 
 import java.math.BigDecimal;
@@ -18,6 +19,9 @@ public class Fine {
     private FineStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime settledAt;
+    private FeeType feeType = FeeType.OVERDUE;
+    private BigDecimal paidAmount = BigDecimal.ZERO;
+    private String note;
 
     public Fine() {
     }
@@ -31,6 +35,11 @@ public class Fine {
         this.status = status;
         this.createdAt = createdAt;
         this.settledAt = settledAt;
+    }
+
+    /** @return the amount still owed on this fine ({@code amount - paidAmount}). */
+    public BigDecimal balance() {
+        return amount.subtract(paidAmount);
     }
 
     public Long getId() {
@@ -87,5 +96,29 @@ public class Fine {
 
     public void setSettledAt(LocalDateTime settledAt) {
         this.settledAt = settledAt;
+    }
+
+    public FeeType getFeeType() {
+        return feeType;
+    }
+
+    public void setFeeType(FeeType feeType) {
+        this.feeType = feeType;
+    }
+
+    public BigDecimal getPaidAmount() {
+        return paidAmount;
+    }
+
+    public void setPaidAmount(BigDecimal paidAmount) {
+        this.paidAmount = paidAmount;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }
