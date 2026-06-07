@@ -78,6 +78,12 @@ public class SettingsService {
         auditLogService.record(actor, "SETTINGS_CHANGED", "Setting", null, key + "=" + value);
     }
 
+    /** Updates a free-text setting (e.g. the UI locale). */
+    public void setString(String key, String value, String actor) {
+        settingsRepository.put(key, value);
+        auditLogService.record(actor, "SETTINGS_CHANGED", "Setting", null, key + "=" + value);
+    }
+
     /** @return the current effective value of each editable key (override or default). */
     public Map<String, String> effectiveSettings() {
         Map<String, String> result = new LinkedHashMap<>();

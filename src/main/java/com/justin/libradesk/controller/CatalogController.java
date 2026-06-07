@@ -311,7 +311,8 @@ public class CatalogController {
 
     private void openMarcEditor(Consumer<MarcEditorController> init) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MarcEditorView.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MarcEditorView.fxml"),
+                    com.justin.libradesk.util.Messages.bundle());
             Parent root = loader.load();
             MarcEditorController controller = loader.getController();
             init.accept(controller);

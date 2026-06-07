@@ -1,5 +1,6 @@
 package com.justin.libradesk.controller;
 
+import com.justin.libradesk.util.Messages;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -44,7 +45,7 @@ public final class ViewNavigator {
 
     private void setRoot(String fxmlResource, String title) {
         try {
-            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlResource));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource(fxmlResource), Messages.bundle());
             Parent root = loader.load();
             Scene scene = stage.getScene();
             if (scene == null) {
