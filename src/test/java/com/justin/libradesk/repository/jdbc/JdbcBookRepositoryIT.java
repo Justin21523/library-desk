@@ -101,6 +101,8 @@ class JdbcBookRepositoryIT extends AbstractRepositoryIT {
         book.setExtent("xvi, 412 pages");
         book.setLanguage("eng");
         book.setControlNumber("ocm12345");
+        book.setCallNumber("005.133 B652e");
+        book.setClassificationScheme(com.justin.libradesk.domain.enumtype.ClassificationScheme.DDC);
         book.getSubjectIds().add(subjectId);
 
         Book saved = repository.save(book);
@@ -109,6 +111,9 @@ class JdbcBookRepositoryIT extends AbstractRepositoryIT {
         assertEquals("3rd ed.", found.getEdition());
         assertEquals("eng", found.getLanguage());
         assertEquals("ocm12345", found.getControlNumber());
+        assertEquals("005.133 B652e", found.getCallNumber());
+        assertEquals(com.justin.libradesk.domain.enumtype.ClassificationScheme.DDC,
+                found.getClassificationScheme());
         assertEquals(List.of(subjectId), found.getSubjectIds());
     }
 

@@ -3,6 +3,7 @@ package com.justin.libradesk.infrastructure.export;
 import com.justin.libradesk.domain.enumtype.LoanStatus;
 import com.justin.libradesk.domain.model.Loan;
 import com.justin.libradesk.dto.LoanResult;
+import com.justin.libradesk.dto.SpineLabel;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,6 +42,17 @@ class PdfServiceTest {
         LoanResult result = new LoanResult(1L, 2L, 3L, LocalDateTime.now().plusDays(14));
 
         pdfService.writeLoanReceipt(file, result, "Alice", "BC-1");
+
+        assertTrue(isPdf(file));
+    }
+
+    @Test
+    void spineLabelsProduceAPdfFile(@TempDir Path dir) throws Exception {
+        File file = dir.resolve("labels.pdf").toFile();
+
+        pdfService.writeSpineLabels(file, List.of(
+                new SpineLabel("005.133 B652e", "BC-1", "Effective Java"),
+                new SpineLabel("005.133 B652e", "BC-2", "Effective Java")));
 
         assertTrue(isPdf(file));
     }

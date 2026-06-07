@@ -60,7 +60,8 @@ abstract class AbstractRepositoryIT {
         try (Connection c = databaseManager.getConnection();
              Statement s = c.createStatement()) {
             s.execute("""
-                    TRUNCATE book_authors, book_subjects, book_copies, loans, reservations, fines,
+                    TRUNCATE book_authors, book_subjects, author_variants, subject_variants,
+                             book_copies, loans, reservations, fines,
                              books, patrons, authors, publishers, categories, subjects,
                              audit_logs, settings, users
                     RESTART IDENTITY CASCADE
