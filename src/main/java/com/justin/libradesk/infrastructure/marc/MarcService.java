@@ -76,6 +76,20 @@ public class MarcService {
         return recordToXml(mapper.toRecord(data));
     }
 
+    /** Renders an arbitrary marc4j record as MARCXML (used by the full MARC editor). */
+    public String toXml(Record record) {
+        return recordToXml(record);
+    }
+
+    /** Parses a single MARCXML string into a full marc4j record (preserving every field). */
+    public Record parseXml(String xml) {
+        MarcReader reader = new MarcXmlReader(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        if (!reader.hasNext()) {
+            throw new IllegalArgumentException("No MARC record found in XML");
+        }
+        return reader.next();
+    }
+
     /** Parses a single MARCXML string back into {@link MarcData} (used by SRU import in Phase 11). */
     public MarcData fromXmlString(String xml) {
         MarcReader reader = new MarcXmlReader(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));

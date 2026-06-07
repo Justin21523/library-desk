@@ -193,6 +193,32 @@ public class CatalogService {
      * names to existing rows or creating them. The raw MARCXML is retained.
      */
     public Book importMarc(MarcData data, String actor) {
+        resolveHeadings(data);
+        return addBook(data.book(), actor);
+    }
+
+    /**
+     * Saves a MARC-edited record: resolves headings, persists the full record's
+     * {@code marc_xml}, and re-projects the structured columns. Inserts when
+     * {@code existingId} is null, otherwise updates that book in place.
+     */
+    public Book saveFromMarc(Long existingId, MarcData data, String actor) {
+        resolveHeadings(data);
+        Book book = data.book();
+        if (existingId == null) {
+            return addBook(book, actor);
+        }
+        if (isBlank(book.getTitle())) {
+            throw new ValidationException("245 (title) is required");
+        }
+        book.setId(existingId);
+        Book saved = bookRepository.save(book);
+        auditLogService.record(actor, "BOOK_UPDATED", "Book", existingId, book.getTitle());
+        return saved;
+    }
+
+    /** Resolves the MARC record's author/subject/publisher names to ids on its book. */
+    private void resolveHeadings(MarcData data) {
         Book book = data.book();
         if (data.publisherName() != null && !data.publisherName().isBlank()) {
             book.setPublisherId(findOrCreatePublisher(data.publisherName()).id());
@@ -207,7 +233,6 @@ public class CatalogService {
                 book.getSubjectIds().add(findOrCreateSubject(term).id());
             }
         }
-        return addBook(book, actor);
     }
 
     /** Builds MARC transfer data for every book (resolving ids back to names), for export. */
