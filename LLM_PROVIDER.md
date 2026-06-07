@@ -163,6 +163,15 @@ Read these to understand the big picture quickly:
   `LocSruClientTest` runs offline against `test/resources/marc/loc-sru-sample.xml`;
   the Catalog "Search LoC" dialog imports the chosen record through
   `CatalogService.importMarc`.
+- **Authority control** is lightweight: `authors.name`/`subjects.term` are the
+  *authorized* headings; `author_variants`/`subject_variants` hold see-from forms
+  (`AuthorityRepository`/`AuthorityService`). `CatalogService.findOrCreateAuthor/
+  Subject` checks an exact authorized match, then a variant (`resolveAuthor/Subject`),
+  before creating — so importing a variant heading reuses the authorized record.
+- **Classification:** `books.call_number` + `classification_scheme` (DDC/LCC), set
+  manually or from MARC 082/050; `util/CallNumber.shelfKey` gives a comparable
+  shelf-order key (pragmatic, not full LC shelflisting). `PdfService.writeSpineLabels`
+  prints labels (call number stacked + barcode) from the Book Copies screen.
 
 ### Phase status (important when reading skeletons)
 
@@ -176,9 +185,10 @@ seeder.
 
 A **cataloging track** is now in progress on top of that: **Phase 10 (done)** —
 richer MARC21 bibliographic fields + MARC import/export (marc4j) + ISBN util;
-**Phase 11 (done)** — copy cataloging from the Library of Congress (SRU).
-**Planned:** Phase 12 — authority control + DDC/LCC call numbers + spine labels;
-Phase 13 — OPAC + faceted search. BIBFRAME is noted as the longer-term direction. When extending, follow the
+**Phase 11 (done)** — copy cataloging from the Library of Congress (SRU);
+**Phase 12 (done)** — authority see-from variants, DDC/LCC call numbers + shelf-order
+key, spine-label PDF. **Planned:** Phase 13 — OPAC + faceted search. BIBFRAME is
+noted as the longer-term direction. When extending, follow the
 implemented repositories/services and the existing feature controllers as the
 reference pattern.
 

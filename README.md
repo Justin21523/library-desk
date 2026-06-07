@@ -5,13 +5,12 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 11 (cataloging — copy cataloging). On top of Phase 10's MARC
-> support, the catalog can now **copy-catalog from the Library of Congress**:
-> "Search LoC" queries the LoC SRU service by ISBN/title, retrieves MARCXML,
-> previews candidates, and imports the chosen record (resolving authors/subjects/
-> publisher and keeping the raw MARC). Earlier phases added richer MARC21 fields
-> and `.mrc`/MARCXML import/export (marc4j). Authority control and an OPAC follow;
-> **BIBFRAME** is the longer-term direction.
+> **Status:** Phase 12 (cataloging — authority control & classification). On top of
+> Phases 10–11 (MARC fields, import/export, LoC copy cataloging): authors and
+> subjects now support **authority see-from variants** (a variant heading resolves
+> to its authorized record on import); books carry a **DDC/LCC call number** with a
+> shelf-order key; and **spine labels** print to PDF. An OPAC follows; **BIBFRAME**
+> is the longer-term direction.
 
 ## Tech stack
 
