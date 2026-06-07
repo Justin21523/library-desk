@@ -34,6 +34,13 @@ bundled docker-java negotiates an API version newer daemons reject, and it uses
 second-aligned `LocalDateTime`s since PostgreSQL `TIMESTAMP` is microsecond
 precision.
 
+GUI/network coverage: `ui/FxmlSmokeIT` (under `-Pit`) starts the JavaFX toolkit and
+`FXMLLoader.load`s every view against a wired `AppContext` to catch fx:id/handler
+mismatches — it self-skips when `DISPLAY` is unset, so headless CI is unaffected.
+`infrastructure/marc/LocSruLiveTest` hits the real LoC SRU service and is disabled
+unless `LOC_LIVE=true` (the offline `LocSruClientTest` fixture is the everyday cover).
+Both have been run green here (the app was also booted against a real Postgres).
+
 ## Architecture
 
 Strict top-down layered architecture; dependencies point downward only and the

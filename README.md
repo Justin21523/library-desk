@@ -144,6 +144,18 @@ mvn verify -Pit                            # unit tests + repository integration
 > (`api.version=1.41`) because the bundled docker-java client otherwise
 > negotiates an API version that newer daemons (minimum 1.40) reject.
 
+The integration suite also includes a **GUI smoke test** (`ui/FxmlSmokeIT`) that
+loads every FXML view against a wired application context, catching `fx:id`/handler
+mismatches. It needs a display to start the JavaFX toolkit, so it self-skips when
+`DISPLAY` is unset (e.g. headless CI) and runs where a display is present.
+
+The **Library of Congress SRU** client has an offline test (recorded fixture) plus a
+live test that is disabled unless `LOC_LIVE=true`:
+
+```bash
+LOC_LIVE=true mvn -Dtest=LocSruLiveTest test   # hits the real LoC service
+```
+
 ## Packaging
 
 Build a self-contained native application image (a slim jlink runtime + the app)
