@@ -104,19 +104,43 @@ Read these to understand the big picture quickly:
   while `findOverdue()` stays ACTIVE-only (idempotent sweep).
 - **Background maintenance** runs on a daemon thread via
   `infrastructure/scheduling/MaintenanceScheduler` (interval `overdue.sweep.minutes`),
-  started/stopped by `LibraDeskApplication`. Each tick runs `markOverdueLoans()`
-  and `ReservationService.expireStaleReady(...)` (READY holds older than
+  started/stopped by `LibraDeskApplication`. Each tick runs `markOverdueLoans()`,
+  `ReservationService.expireStaleReady(...)` (READY holds older than
   `reservation.ready.expiry.days` expire and the next patron is promoted — this is
-  why reservations carry `ready_at`). The overdue sweep can also be triggered
-  manually from Reports.
-- **Fines** (`fines` table → `Fine`/`FineService`): an overdue return charges
-  `fine.per.day × overdue days` via `CirculationService.returnByCopy`. Checkout is
-  blocked when a patron's unpaid total exceeds `fine.block.threshold` (`0` =
-  disabled). The Fines screen pays/waives. Money is `BigDecimal`;
-  `SettingsService.getBigDecimal` reads the decimal settings (which are configured
-  in `application.properties`, not the integer-only Settings grid).
-- **Loan renewal** is `CirculationService.renew`: extends the due date one period
-  unless the book has a pending reservation (`ReservationService.hasPending`).
+  why reservations carry `ready_at`), and the three `NoticeService` sweeps. The
+  overdue sweep can also be triggered manually from Reports.
+- **Circulation policy matrix (Phase 16):** `circ_policies` (patron type × material
+  type → loan days, max loans, renewal limit, max holds, fine/day, fine cap, grace)
+  resolved by `CircPolicyService.policyFor` — an exact material row wins, then the
+  patron-type default row (`material_type` NULL), then a fallback synthesized from the
+  flat settings (so an empty matrix preserves old behaviour). `CirculationService`
+  reads loan period / limit / fine rate / cap / grace from it; `ReservationService`
+  enforces `maxHolds`. Edited on the Circ Policies screen (SETTINGS-gated).
+- **Library calendar (Phase 16):** `calendar_days` (closed dates) via
+  `CalendarService`. Due dates roll forward off closed days (`nextOpenDay`) and overdue
+  fines accrue only on open days (`openDaysBetween`), minus the policy grace. Managed on
+  the Calendar screen (SETTINGS-gated).
+- **Branches/locations (Phase 16):** `branches`/`locations` (+ `book_copies.location_id`)
+  via `LocationService`; managed on the Catalog Data screen's Branches & Locations tab,
+  and a copy's location is set on the Book Copies screen.
+- **Billing (Phase 16):** `FineService` raises typed charges (`FeeType`
+  OVERDUE/LOST_ITEM/PROCESSING/DAMAGE) via `charge(...)`, takes full or **partial**
+  payments and waive-with-reason (recorded in the `payments` table; `fines` gains
+  `fee_type`/`paid_amount`/`note`, balance = amount − paid). `CirculationService.markLost`/
+  `markDamaged` close the loan, set the copy status, and raise the fee (+ processing fee
+  from `fine.processing.fee`). Money is `BigDecimal`.
+- **Patron account & blocks (Phase 16):** `PatronAccountService.accountFor` aggregates a
+  patron's loans/holds/fines/balance and computes **blocks** (derived, no table):
+  EXPIRED/SUSPENDED membership, balance over `fine.block.threshold`, or overdue count ≥
+  `overdue.block.count`. `CirculationService.checkout` rejects when blocked. Surfaced on
+  the Patron Account screen (pay/waive, mark lost/damaged).
+- **Notices (Phase 16):** `NoticeService` builds due-soon (`notice.due.soon.days`),
+  overdue, and hold-ready messages and sends them through the `infrastructure/notify/Mailer`
+  seam. The default `LoggingMailer` logs them (offline, test-friendly); a real SMTP
+  `Mailer` can be swapped in. Notices skip patrons without an email.
+- **Loan renewal** is `CirculationService.renew`: extends the due date one policy period
+  unless the renewal limit is hit (`loans.renewal_count`) or the book has a pending
+  reservation (`ReservationService.hasPending`).
 - **CSV/PDF export** live in `infrastructure/export/` (`CsvService` via Apache
   Commons CSV, `PdfService` via OpenPDF). Both only map domain objects to a file;
   controllers gather the data and call them. CSV import loops over parsed rows and
@@ -219,10 +243,11 @@ key, spine-label PDF; **Phase 13 (done)** — OPAC catalog search with facets. A
 professional-ILS track (14–17) is now underway: **Phase 14a (done)** — full
 field-level MARC editor with `marc_xml` as source of truth; **14b (done)** — record
 status + OPAC suppression, leader material type, batch import + dedup, workforms;
-**15 (done)** — authority control (rename / merge / id.loc.gov lookup). **Planned:**
-16 (circulation policy matrix, calendar, branches, blocks, payments, email notices),
-17 (MFHD/FRBR/serials + REST/OAI-PMH/SRU server + job framework). A full
-MARC-authority-record subsystem remains a noted future step. When extending, follow the
+**15 (done)** — authority control (rename / merge / id.loc.gov lookup); **16 (done)** —
+circulation policy matrix, library calendar, branches/locations, patron blocks,
+billing (typed fees + partial payments + lost/damaged), and notices via the Mailer
+seam. **Planned:** 17 (MFHD/FRBR/serials + REST/OAI-PMH/SRU server + job framework).
+A full MARC-authority-record subsystem remains a noted future step. When extending, follow the
 implemented repositories/services and the existing feature controllers as the
 reference pattern.
 

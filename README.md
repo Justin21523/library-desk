@@ -5,13 +5,15 @@ learning project. It demonstrates clean layered architecture, JavaFX UI
 development, relational database design, enforceable business rules, and unit
 testing in a realistic — but intentionally not over-engineered — codebase.
 
-> **Status:** Phase 15 (authority control). On top of the full MARC editor (14a)
-> and cataloging completeness (14b: record status with OPAC suppression, leader-based
-> material type, **batch import with ISBN/control-number dedup**, workform templates),
-> this phase adds **authority control**: global heading change (rename → reflected by
-> every bib), heading **merge/de-duplication**, and online authorized-heading lookup
-> from **id.loc.gov** (suggest service). Coming next: circulation policy matrix &
-> notices (16) and interoperability — REST/OAI-PMH/SRU (17).
+> **Status:** Phase 16 (collection policy + circulation upgrade). On top of the
+> MARC editor (14a), cataloging completeness (14b), and authority control (15),
+> this phase adds a **circulation policy matrix** (patron type × material type →
+> loan period, limits, fine rate/cap, grace), a **library calendar** (due dates and
+> overdue fines skip closed days), **branches / shelving locations**, **patron
+> blocks** and **renewal/hold limits**, **billing** (typed fees, partial payments,
+> waive-with-reason, lost/damaged-item charges), and **notices** (due-soon / overdue
+> / hold-ready) via a pluggable mailer seam. Coming next: bibliographic structure &
+> interoperability — MFHD/FRBR/serials + REST/OAI-PMH/SRU (17).
 
 ## Tech stack
 
