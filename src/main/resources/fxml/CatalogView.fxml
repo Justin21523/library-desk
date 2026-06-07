@@ -37,6 +37,12 @@
         <Button text="Search LoC" onAction="#onSearchLoc"/>
     </HBox>
 
+    <HBox spacing="8">
+        <Label text="Record status:"/>
+        <ComboBox fx:id="statusCombo"/>
+        <Button text="Set status" onAction="#onSetStatus"/>
+    </HBox>
+
     <VBox spacing="6">
         <HBox spacing="8">
             <TextField fx:id="titleField" promptText="Title"/>
@@ -63,6 +69,7 @@
             <TableColumn fx:id="yearColumn" text="Year" prefWidth="70"/>
             <TableColumn fx:id="publisherColumn" text="Publisher" prefWidth="140"/>
             <TableColumn fx:id="categoryColumn" text="Category" prefWidth="120"/>
+            <TableColumn fx:id="statusColumn" text="Status" prefWidth="100"/>
         </columns>
     </TableView>
 </VBox>

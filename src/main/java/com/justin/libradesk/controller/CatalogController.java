@@ -2,12 +2,15 @@ package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.enumtype.ClassificationScheme;
+import com.justin.libradesk.domain.enumtype.MaterialType;
+import com.justin.libradesk.domain.enumtype.RecordStatus;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
 import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
+import com.justin.libradesk.dto.BatchImportResult;
 import com.justin.libradesk.infrastructure.marc.MarcData;
 import com.justin.libradesk.util.Isbn;
 import javafx.beans.property.SimpleStringProperty;
@@ -18,6 +21,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
+import javafx.scene.control.ChoiceDialog;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
@@ -44,6 +48,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 /**
  * Catalog management: search/list books and add new records, including
@@ -83,6 +88,10 @@ public class CatalogController {
     private TableColumn<Book, String> publisherColumn;
     @FXML
     private TableColumn<Book, String> categoryColumn;
+    @FXML
+    private TableColumn<Book, String> statusColumn;
+    @FXML
+    private ComboBox<RecordStatus> statusCombo;
 
     private final Map<Long, String> publisherNames = new HashMap<>();
     private final Map<Long, String> categoryNames = new HashMap<>();
@@ -92,6 +101,7 @@ public class CatalogController {
         publisherCombo.setConverter(nameConverter(Publisher::name));
         categoryCombo.setConverter(nameConverter(Category::name));
         schemeCombo.setItems(FXCollections.observableArrayList(ClassificationScheme.values()));
+        statusCombo.setItems(FXCollections.observableArrayList(RecordStatus.values()));
         authorsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         authorsList.setCellFactory(list -> new ListCell<>() {
             @Override
@@ -117,6 +127,8 @@ public class CatalogController {
                 lookup(publisherNames, c.getValue().getPublisherId())));
         categoryColumn.setCellValueFactory(c -> new SimpleStringProperty(
                 lookup(categoryNames, c.getValue().getCategoryId())));
+        statusColumn.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getRecordStatus() == null ? "-" : c.getValue().getRecordStatus().name()));
 
         loadReferenceData();
         onShowAll();
@@ -218,26 +230,23 @@ public class CatalogController {
         if (file == null) {
             return;
         }
-        int imported = 0;
-        var errors = new ArrayList<String>();
         try {
-            for (MarcData data : AppContext.get().marcService().read(file)) {
-                try {
-                    AppContext.get().catalogService().importMarc(data, actor());
-                    imported++;
-                } catch (RuntimeException rowError) {
-                    errors.add((data.book().getTitle() == null ? "(untitled)" : data.book().getTitle())
-                            + ": " + rowError.getMessage());
-                }
+            List<MarcData> records = AppContext.get().marcService().read(file);
+            BatchImportResult result = catalog().importBatch(records, actor());
+            loadReferenceData();
+            onShowAll();
+            StringBuilder message = new StringBuilder("Imported " + result.imported() + " record(s); skipped "
+                    + result.duplicates().size() + " duplicate(s); " + result.errors().size() + " error(s).");
+            if (!result.duplicates().isEmpty()) {
+                message.append("\nDuplicates: ").append(String.join(", ", result.duplicates()));
             }
+            if (!result.errors().isEmpty()) {
+                message.append("\n").append(String.join("\n", result.errors()));
+            }
+            Dialogs.info(message.toString());
         } catch (RuntimeException e) {
             Dialogs.error("Import failed: " + e.getMessage());
-            return;
         }
-        loadReferenceData();
-        onShowAll();
-        Dialogs.info("Imported " + imported + " record(s), skipped " + errors.size() + "."
-                + (errors.isEmpty() ? "" : "\n" + String.join("\n", errors)));
     }
 
     @FXML
@@ -283,7 +292,11 @@ public class CatalogController {
 
     @FXML
     private void onNewMarc() {
-        openMarcEditor(null);
+        ChoiceDialog<MaterialType> dialog = new ChoiceDialog<>(MaterialType.BOOK,
+                MaterialType.BOOK, MaterialType.SERIAL, MaterialType.EBOOK);
+        dialog.setTitle("New MARC record");
+        dialog.setHeaderText("Choose a workform");
+        dialog.showAndWait().ifPresent(type -> openMarcEditor(c -> c.loadTemplate(type)));
     }
 
     @FXML
@@ -293,19 +306,15 @@ public class CatalogController {
             Dialogs.error("Select a book to edit its MARC record.");
             return;
         }
-        openMarcEditor(selected);
+        openMarcEditor(c -> c.loadForBook(selected));
     }
 
-    private void openMarcEditor(Book book) {
+    private void openMarcEditor(Consumer<MarcEditorController> init) {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/MarcEditorView.fxml"));
             Parent root = loader.load();
             MarcEditorController controller = loader.getController();
-            if (book == null) {
-                controller.loadNew();
-            } else {
-                controller.loadForBook(book);
-            }
+            init.accept(controller);
             Stage stage = new Stage();
             stage.initModality(Modality.APPLICATION_MODAL);
             stage.initOwner(window());
@@ -318,6 +327,21 @@ public class CatalogController {
             stage.showAndWait();
         } catch (IOException e) {
             throw new UncheckedIOException("Failed to open MARC editor", e);
+        }
+    }
+
+    @FXML
+    private void onSetStatus() {
+        Book selected = bookTable.getSelectionModel().getSelectedItem();
+        if (selected == null || statusCombo.getValue() == null) {
+            Dialogs.error("Select a book and a status.");
+            return;
+        }
+        try {
+            catalog().setRecordStatus(selected.getId(), statusCombo.getValue(), actor());
+            onShowAll();
+        } catch (RuntimeException e) {
+            Dialogs.error(e.getMessage());
         }
     }
 

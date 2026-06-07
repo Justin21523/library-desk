@@ -1,10 +1,12 @@
 package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.infrastructure.marc.MarcData;
 import com.justin.libradesk.infrastructure.marc.MarcLine;
 import com.justin.libradesk.infrastructure.marc.MarcLineCodec;
+import com.justin.libradesk.infrastructure.marc.MarcTemplates;
 import com.justin.libradesk.infrastructure.marc.MarcValidator;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -95,6 +97,18 @@ public class MarcEditorController {
         fieldTable.setItems(FXCollections.observableArrayList(
                 new FieldRow("008", "", ""),
                 new FieldRow("245", "10", "$a")));
+        issuesArea.clear();
+    }
+
+    /** Starts a new record from a material-type workform template. */
+    public void loadTemplate(MaterialType type) {
+        editingBookId = null;
+        MarcLineCodec.DecodedMarc template = MarcTemplates.forType(type);
+        leaderField.setText(template.leader());
+        fieldTable.setItems(FXCollections.observableArrayList(
+                template.fields().stream()
+                        .map(l -> new FieldRow(l.tag(), l.indicators(), l.content()))
+                        .toList()));
         issuesArea.clear();
     }
 
