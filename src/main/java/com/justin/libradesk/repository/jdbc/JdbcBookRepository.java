@@ -1,5 +1,6 @@
 package com.justin.libradesk.repository.jdbc;
 
+import com.justin.libradesk.domain.enumtype.ClassificationScheme;
 import com.justin.libradesk.domain.enumtype.MaterialType;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.infrastructure.database.DatabaseManager;
@@ -60,12 +61,13 @@ public class JdbcBookRepository implements BookRepository {
         String sql = """
                 INSERT INTO books (isbn, title, publisher_id, category_id, published_year,
                                    edition, pub_place, extent, series, language, material_type,
-                                   control_number, summary, marc_xml, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                   control_number, summary, marc_xml, call_number,
+                                   classification_scheme, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             bindBook(ps, book);
-            ps.setTimestamp(15, Timestamp.valueOf(book.getCreatedAt()));
+            ps.setTimestamp(17, Timestamp.valueOf(book.getCreatedAt()));
             ps.executeUpdate();
             try (ResultSet keys = ps.getGeneratedKeys()) {
                 if (keys.next()) {
@@ -80,17 +82,18 @@ public class JdbcBookRepository implements BookRepository {
                 UPDATE books
                    SET isbn = ?, title = ?, publisher_id = ?, category_id = ?, published_year = ?,
                        edition = ?, pub_place = ?, extent = ?, series = ?, language = ?,
-                       material_type = ?, control_number = ?, summary = ?, marc_xml = ?
+                       material_type = ?, control_number = ?, summary = ?, marc_xml = ?,
+                       call_number = ?, classification_scheme = ?
                  WHERE id = ?
                 """;
         try (PreparedStatement ps = c.prepareStatement(sql)) {
             bindBook(ps, book);
-            ps.setLong(15, book.getId());
+            ps.setLong(17, book.getId());
             ps.executeUpdate();
         }
     }
 
-    /** Binds the 14 shared book columns (1..14); callers set the trailing column (15). */
+    /** Binds the 16 shared book columns (1..16); callers set the trailing column (17). */
     private void bindBook(PreparedStatement ps, Book book) throws SQLException {
         ps.setString(1, book.getIsbn());
         ps.setString(2, book.getTitle());
@@ -106,6 +109,9 @@ public class JdbcBookRepository implements BookRepository {
         ps.setString(12, book.getControlNumber());
         ps.setString(13, book.getSummary());
         ps.setString(14, book.getMarcXml());
+        ps.setString(15, book.getCallNumber());
+        ps.setString(16, book.getClassificationScheme() == null
+                ? null : book.getClassificationScheme().name());
     }
 
     /** Replaces a book's link rows in a junction table with the given ids. */
@@ -237,6 +243,9 @@ public class JdbcBookRepository implements BookRepository {
         book.setControlNumber(rs.getString("control_number"));
         book.setSummary(rs.getString("summary"));
         book.setMarcXml(rs.getString("marc_xml"));
+        book.setCallNumber(rs.getString("call_number"));
+        String scheme = rs.getString("classification_scheme");
+        book.setClassificationScheme(scheme != null ? ClassificationScheme.valueOf(scheme) : null);
         return book;
     }
 

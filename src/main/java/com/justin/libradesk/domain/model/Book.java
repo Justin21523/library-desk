@@ -1,5 +1,6 @@
 package com.justin.libradesk.domain.model;
 
+import com.justin.libradesk.domain.enumtype.ClassificationScheme;
 import com.justin.libradesk.domain.enumtype.MaterialType;
 
 import java.time.LocalDateTime;
@@ -31,6 +32,8 @@ public class Book {
     private String controlNumber;
     private String summary;
     private String marcXml;
+    private String callNumber;
+    private ClassificationScheme classificationScheme;
 
     /** Author ids associated with this book (populated by the catalog service). */
     private final List<Long> authorIds = new ArrayList<>();
@@ -186,5 +189,21 @@ public class Book {
 
     public void setMarcXml(String marcXml) {
         this.marcXml = marcXml;
+    }
+
+    public String getCallNumber() {
+        return callNumber;
+    }
+
+    public void setCallNumber(String callNumber) {
+        this.callNumber = callNumber;
+    }
+
+    public ClassificationScheme getClassificationScheme() {
+        return classificationScheme;
+    }
+
+    public void setClassificationScheme(ClassificationScheme classificationScheme) {
+        this.classificationScheme = classificationScheme;
     }
 }

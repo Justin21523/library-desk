@@ -1,5 +1,6 @@
 package com.justin.libradesk.infrastructure.marc;
 
+import com.justin.libradesk.domain.enumtype.ClassificationScheme;
 import com.justin.libradesk.domain.model.Book;
 import org.marc4j.marc.DataField;
 import org.marc4j.marc.MarcFactory;
@@ -48,6 +49,19 @@ public class MarcMapper {
 
         List<String> subjects = new ArrayList<>(subfields(record, "650", 'a'));
 
+        // Call number: prefer DDC (082) then LCC (050).
+        String ddc = firstSubfield(record, "082", 'a', MarcMapper::trim);
+        if (ddc != null) {
+            book.setCallNumber(ddc);
+            book.setClassificationScheme(ClassificationScheme.DDC);
+        } else {
+            String lcc = firstSubfield(record, "050", 'a', MarcMapper::trim);
+            if (lcc != null) {
+                book.setCallNumber(lcc);
+                book.setClassificationScheme(ClassificationScheme.LCC);
+            }
+        }
+
         return new MarcData(book, authors, subjects, publisherName);
     }
 
@@ -61,6 +75,10 @@ public class MarcMapper {
         }
         if (book.getIsbn() != null) {
             record.addVariableField(dataField("020", 'a', book.getIsbn()));
+        }
+        if (book.getCallNumber() != null) {
+            String tag = book.getClassificationScheme() == ClassificationScheme.LCC ? "050" : "082";
+            record.addVariableField(dataField(tag, 'a', book.getCallNumber()));
         }
         for (String author : data.authorNames()) {
             record.addVariableField(dataField("100", 'a', author));
