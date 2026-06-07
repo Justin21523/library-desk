@@ -1,6 +1,7 @@
 package com.justin.libradesk.repository.jdbc;
 
 import com.justin.libradesk.domain.model.Author;
+import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.Subject;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,5 +39,23 @@ class JdbcAuthorityRepositoryIT extends AbstractRepositoryIT {
         repository.addSubjectVariant(subjectId, "Comedy");
 
         assertEquals(subjectId, repository.findSubjectIdByVariant("Comedy").orElseThrow());
+    }
+
+    @Test
+    void mergeAuthorRepointsBookLinksAndVariantsThenDeletesSource() {
+        JdbcAuthorRepository authors = new JdbcAuthorRepository(databaseManager);
+        long from = authors.save(new Author(null, "Clemens, Samuel")).id();
+        repository.addAuthorVariant(from, "S. Clemens");
+
+        JdbcBookRepository books = new JdbcBookRepository(databaseManager);
+        Book book = new Book(null, "isbnM", "Merge Test", null, null, null, FIXED);
+        book.getAuthorIds().add(from);
+        long bookId = books.save(book).getId();
+
+        repository.mergeAuthor(from, authorId);
+
+        assertEquals(List.of(authorId), books.findById(bookId).orElseThrow().getAuthorIds());
+        assertEquals(List.of("S. Clemens"), repository.listAuthorVariants(authorId));
+        assertTrue(authors.findById(from).isEmpty());
     }
 }
