@@ -1,8 +1,11 @@
 package com.justin.libradesk.domain.service;
 
+import com.justin.libradesk.domain.enumtype.FeeType;
 import com.justin.libradesk.domain.enumtype.FineStatus;
 import com.justin.libradesk.domain.model.Fine;
+import com.justin.libradesk.domain.model.Payment;
 import com.justin.libradesk.repository.FineRepository;
+import com.justin.libradesk.repository.PaymentRepository;
 import com.justin.libradesk.validation.ValidationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +37,8 @@ class FineServiceTest {
     @Mock
     private FineRepository fineRepository;
     @Mock
+    private PaymentRepository paymentRepository;
+    @Mock
     private SettingsService settingsService;
     @Mock
     private AuditLogService auditLogService;
@@ -43,7 +48,28 @@ class FineServiceTest {
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.of("UTC")).toInstant(), ZoneId.of("UTC"));
-        fineService = new FineService(fineRepository, settingsService, auditLogService, clock);
+        fineService = new FineService(fineRepository, paymentRepository, settingsService,
+                auditLogService, clock);
+    }
+
+    private Fine unpaid(BigDecimal amount) {
+        return new Fine(9L, 1L, 2L, amount, FineStatus.UNPAID, NOW, null);
+    }
+
+    @Test
+    void chargeRaisesFineOfGivenType() {
+        when(fineRepository.save(any(Fine.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Fine fine = fineService.charge(1L, 2L, new BigDecimal("25.00"), FeeType.LOST_ITEM, "admin");
+
+        assertEquals(FeeType.LOST_ITEM, fine.getFeeType());
+        assertEquals(FineStatus.UNPAID, fine.getStatus());
+    }
+
+    @Test
+    void chargeIgnoresNonPositiveAmount() {
+        assertNull(fineService.charge(1L, 2L, BigDecimal.ZERO, FeeType.PROCESSING, "admin"));
+        verify(fineRepository, never()).save(any());
     }
 
     @Test
@@ -54,7 +80,7 @@ class FineServiceTest {
         Fine fine = fineService.chargeOverdue(1L, 2L, 4, "admin");
 
         assertEquals(0, fine.getAmount().compareTo(new BigDecimal("2.00")));
-        assertEquals(FineStatus.UNPAID, fine.getStatus());
+        assertEquals(FeeType.OVERDUE, fine.getFeeType());
     }
 
     @Test
@@ -64,17 +90,55 @@ class FineServiceTest {
     }
 
     @Test
-    void payMarksFinePaidWithSettledTimestamp() {
-        Fine unpaid = new Fine(9L, 1L, 2L, new BigDecimal("3.00"), FineStatus.UNPAID, NOW, null);
-        when(fineRepository.findById(9L)).thenReturn(Optional.of(unpaid));
+    void fullPaymentMarksFinePaidWithSettledTimestamp() {
+        when(fineRepository.findById(9L)).thenReturn(Optional.of(unpaid(new BigDecimal("3.00"))));
         when(fineRepository.save(any(Fine.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         fineService.pay(9L, "admin");
 
+        verify(paymentRepository).save(any(Payment.class));
         ArgumentCaptor<Fine> captor = ArgumentCaptor.forClass(Fine.class);
         verify(fineRepository).save(captor.capture());
         assertEquals(FineStatus.PAID, captor.getValue().getStatus());
         assertEquals(NOW, captor.getValue().getSettledAt());
+    }
+
+    @Test
+    void partialPaymentLeavesFineUnpaidWithReducedBalance() {
+        when(fineRepository.findById(9L)).thenReturn(Optional.of(unpaid(new BigDecimal("3.00"))));
+        when(fineRepository.save(any(Fine.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fineService.pay(9L, new BigDecimal("1.00"), "CASH", "admin");
+
+        verify(paymentRepository).save(any(Payment.class));
+        ArgumentCaptor<Fine> captor = ArgumentCaptor.forClass(Fine.class);
+        verify(fineRepository).save(captor.capture());
+        assertEquals(FineStatus.UNPAID, captor.getValue().getStatus());
+        assertEquals(0, captor.getValue().balance().compareTo(new BigDecimal("2.00")));
+    }
+
+    @Test
+    void paymentExceedingBalanceIsRejected() {
+        when(fineRepository.findById(9L)).thenReturn(Optional.of(unpaid(new BigDecimal("3.00"))));
+
+        assertThrows(ValidationException.class,
+                () -> fineService.pay(9L, new BigDecimal("5.00"), "CASH", "admin"));
+        verify(fineRepository, never()).save(any());
+    }
+
+    @Test
+    void waiveRecordsReasonAndClearsBalance() {
+        when(fineRepository.findById(9L)).thenReturn(Optional.of(unpaid(new BigDecimal("3.00"))));
+        when(fineRepository.save(any(Fine.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        fineService.waive(9L, "Goodwill", "admin");
+
+        verify(paymentRepository).save(any(Payment.class));
+        ArgumentCaptor<Fine> captor = ArgumentCaptor.forClass(Fine.class);
+        verify(fineRepository).save(captor.capture());
+        assertEquals(FineStatus.WAIVED, captor.getValue().getStatus());
+        assertEquals("Goodwill", captor.getValue().getNote());
+        assertEquals(0, captor.getValue().balance().compareTo(BigDecimal.ZERO));
     }
 
     @Test

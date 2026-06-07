@@ -3,10 +3,13 @@ package com.justin.libradesk.repository.jdbc;
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
+import com.justin.libradesk.domain.model.Branch;
+import com.justin.libradesk.domain.model.ShelfLocation;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JdbcBookCopyRepositoryIT extends AbstractRepositoryIT {
@@ -55,5 +58,22 @@ class JdbcBookCopyRepositoryIT extends AbstractRepositoryIT {
 
         assertEquals(CopyStatus.ON_LOAN,
                 copyRepository.findById(saved.getId()).orElseThrow().getStatus());
+    }
+
+    @Test
+    void locationIdRoundTripsAndDefaultsToNull() {
+        BookCopy unassigned = copyRepository.save(newCopy("BC-NL", CopyStatus.AVAILABLE));
+        assertNull(copyRepository.findById(unassigned.getId()).orElseThrow().getLocationId());
+
+        Long branchId = new JdbcBranchRepository(databaseManager)
+                .save(new Branch(null, "MAIN", "Main")).id();
+        Long locationId = new JdbcLocationRepository(databaseManager)
+                .save(new ShelfLocation(null, branchId, "Stacks")).id();
+
+        BookCopy copy = newCopy("BC-LOC", CopyStatus.AVAILABLE);
+        copy.setLocationId(locationId);
+        BookCopy saved = copyRepository.save(copy);
+
+        assertEquals(locationId, copyRepository.findById(saved.getId()).orElseThrow().getLocationId());
     }
 }

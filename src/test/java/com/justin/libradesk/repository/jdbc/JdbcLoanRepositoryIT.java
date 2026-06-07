@@ -79,4 +79,26 @@ class JdbcLoanRepositoryIT extends AbstractRepositoryIT {
 
         assertEquals(1, loanRepository.findOverdue().size());
     }
+
+    @Test
+    void renewalCountRoundTripsAndDefaultsToZero() {
+        Loan saved = loanRepository.save(activeLoan(FIXED.plusDays(14)));
+        assertEquals(0, loanRepository.findById(saved.getId()).orElseThrow().getRenewalCount());
+
+        saved.setRenewalCount(2);
+        loanRepository.save(saved);
+
+        assertEquals(2, loanRepository.findById(saved.getId()).orElseThrow().getRenewalCount());
+    }
+
+    @Test
+    void countByPatronAndStatusCountsMatchingLoans() {
+        loanRepository.save(activeLoan(FIXED.plusDays(14)));
+        Loan overdue = activeLoan(FIXED.plusDays(7));
+        overdue.setStatus(LoanStatus.OVERDUE);
+        loanRepository.save(overdue);
+
+        assertEquals(1, loanRepository.countByPatronAndStatus(patronId, LoanStatus.OVERDUE));
+        assertEquals(1, loanRepository.countByPatronAndStatus(patronId, LoanStatus.ACTIVE));
+    }
 }

@@ -4,6 +4,7 @@ import com.justin.libradesk.domain.enumtype.PatronStatus;
 import com.justin.libradesk.domain.enumtype.PatronType;
 import com.justin.libradesk.domain.enumtype.ReservationStatus;
 import com.justin.libradesk.domain.model.Book;
+import com.justin.libradesk.domain.model.CircPolicy;
 import com.justin.libradesk.domain.model.Patron;
 import com.justin.libradesk.domain.model.Reservation;
 import com.justin.libradesk.repository.BookRepository;
@@ -17,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
@@ -27,6 +29,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -46,14 +50,20 @@ class ReservationServiceTest {
     private AuditLogService auditLogService;
     @Mock
     private SettingsService settingsService;
+    @Mock
+    private CircPolicyService circPolicyService;
 
     private ReservationService reservationService;
 
     @BeforeEach
     void setUp() {
         Clock clock = Clock.fixed(NOW.atZone(ZoneId.of("UTC")).toInstant(), ZoneId.of("UTC"));
+        lenient().when(circPolicyService.policyFor(any(), any())).thenReturn(
+                new CircPolicy(1L, PatronType.STUDENT, null, 14, 5, 2, 5,
+                        new BigDecimal("0.50"), BigDecimal.ZERO, 0));
+        lenient().when(reservationRepository.findActiveByPatron(anyLong())).thenReturn(List.of());
         reservationService = new ReservationService(reservationRepository, patronRepository,
-                bookRepository, auditLogService, settingsService, clock);
+                bookRepository, auditLogService, settingsService, circPolicyService, clock);
     }
 
     private Book book() {
@@ -77,6 +87,23 @@ class ReservationServiceTest {
 
         assertEquals(3, result.getQueuePosition());
         assertEquals(ReservationStatus.PENDING, result.getStatus());
+    }
+
+    @Test
+    void reserveRejectedWhenHoldLimitReached() {
+        when(bookRepository.findById(5L)).thenReturn(Optional.of(book()));
+        when(patronRepository.findById(10L)).thenReturn(Optional.of(patron(PatronStatus.ACTIVE)));
+        when(reservationRepository.findActiveByBookAndPatron(5L, 10L)).thenReturn(Optional.empty());
+        // Five active holds already, policy max is 5.
+        when(reservationRepository.findActiveByPatron(10L)).thenReturn(List.of(
+                new Reservation(1L, 1L, 10L, NOW, 1, ReservationStatus.PENDING),
+                new Reservation(2L, 2L, 10L, NOW, 1, ReservationStatus.PENDING),
+                new Reservation(3L, 3L, 10L, NOW, 1, ReservationStatus.PENDING),
+                new Reservation(4L, 4L, 10L, NOW, 1, ReservationStatus.READY),
+                new Reservation(5L, 6L, 10L, NOW, 1, ReservationStatus.PENDING)));
+
+        assertThrows(ValidationException.class, () -> reservationService.reserve(5L, 10L, "admin"));
+        verify(reservationRepository, never()).save(any());
     }
 
     @Test
