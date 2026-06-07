@@ -42,5 +42,6 @@
         <Label text="Set status:"/>
         <ComboBox fx:id="statusCombo" prefWidth="160"/>
         <Button text="Apply to selected" onAction="#onSetStatus"/>
+        <Button text="Print spine labels" onAction="#onPrintSpineLabels"/>
     </HBox>
 </VBox>

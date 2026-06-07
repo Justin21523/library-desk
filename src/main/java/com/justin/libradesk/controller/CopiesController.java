@@ -4,6 +4,7 @@ import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
+import com.justin.libradesk.dto.SpineLabel;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.fxml.FXML;
@@ -11,7 +12,11 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
+
+import java.io.File;
+import java.util.List;
 
 /**
  * Book copy management: pick a book, list its copies, add new copies, and
@@ -96,6 +101,37 @@ public class CopiesController {
             refreshCopies();
         } catch (RuntimeException e) {
             Dialogs.error(e.getMessage());
+        }
+    }
+
+    @FXML
+    private void onPrintSpineLabels() {
+        Book book = bookCombo.getValue();
+        if (book == null) {
+            Dialogs.error("Select a book first.");
+            return;
+        }
+        List<BookCopy> copies = AppContext.get().catalogService().listCopies(book.getId());
+        if (copies.isEmpty()) {
+            Dialogs.error("This book has no copies to label.");
+            return;
+        }
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Save spine labels");
+        chooser.setInitialFileName("spine-labels.pdf");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF", "*.pdf"));
+        File file = chooser.showSaveDialog(copyTable.getScene().getWindow());
+        if (file == null) {
+            return;
+        }
+        List<SpineLabel> labels = copies.stream()
+                .map(copy -> new SpineLabel(book.getCallNumber(), copy.getBarcode(), book.getTitle()))
+                .toList();
+        try {
+            AppContext.get().pdfService().writeSpineLabels(file, labels);
+            Dialogs.info("Saved " + labels.size() + " label(s) to " + file.getName());
+        } catch (RuntimeException e) {
+            Dialogs.error("Could not write labels: " + e.getMessage());
         }
     }
 

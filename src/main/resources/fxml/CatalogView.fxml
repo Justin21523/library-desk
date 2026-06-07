@@ -42,6 +42,8 @@
             <TextField fx:id="yearField" promptText="Year"/>
             <ComboBox fx:id="publisherCombo" promptText="Publisher"/>
             <ComboBox fx:id="categoryCombo" promptText="Category"/>
+            <TextField fx:id="callNumberField" promptText="Call no."/>
+            <ComboBox fx:id="schemeCombo" promptText="Scheme"/>
             <Button text="Add book" onAction="#onAddBook" styleClass="primary-button"/>
         </HBox>
         <HBox spacing="8">

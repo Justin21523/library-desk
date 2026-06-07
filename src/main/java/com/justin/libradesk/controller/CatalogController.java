@@ -1,6 +1,7 @@
 package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
+import com.justin.libradesk.domain.enumtype.ClassificationScheme;
 import com.justin.libradesk.domain.model.Author;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.Category;
@@ -56,6 +57,10 @@ public class CatalogController {
     @FXML
     private ComboBox<Category> categoryCombo;
     @FXML
+    private TextField callNumberField;
+    @FXML
+    private ComboBox<ClassificationScheme> schemeCombo;
+    @FXML
     private ListView<Author> authorsList;
     @FXML
     private ListView<Subject> subjectsList;
@@ -79,6 +84,7 @@ public class CatalogController {
     private void initialize() {
         publisherCombo.setConverter(nameConverter(Publisher::name));
         categoryCombo.setConverter(nameConverter(Category::name));
+        schemeCombo.setItems(FXCollections.observableArrayList(ClassificationScheme.values()));
         authorsList.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         authorsList.setCellFactory(list -> new ListCell<>() {
             @Override
@@ -133,6 +139,8 @@ public class CatalogController {
         Category category = categoryCombo.getValue();
         book.setPublisherId(publisher == null ? null : publisher.id());
         book.setCategoryId(category == null ? null : category.id());
+        book.setCallNumber(text(callNumberField));
+        book.setClassificationScheme(schemeCombo.getValue());
         for (Author author : authorsList.getSelectionModel().getSelectedItems()) {
             book.getAuthorIds().add(author.id());
         }
@@ -355,6 +363,8 @@ public class CatalogController {
         yearField.clear();
         publisherCombo.getSelectionModel().clearSelection();
         categoryCombo.getSelectionModel().clearSelection();
+        callNumberField.clear();
+        schemeCombo.getSelectionModel().clearSelection();
         authorsList.getSelectionModel().clearSelection();
         subjectsList.getSelectionModel().clearSelection();
     }

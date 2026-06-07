@@ -8,6 +8,7 @@
 <?import javafx.scene.control.TabPane?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Priority?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
@@ -24,10 +25,20 @@
                 <VBox spacing="8">
                     <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
                     <HBox spacing="8">
-                        <TextField fx:id="authorField" promptText="Author name"/>
+                        <TextField fx:id="authorField" promptText="Author name (authorized form)"/>
                         <Button text="Add author" onAction="#onAddAuthor" styleClass="primary-button"/>
                     </HBox>
-                    <ListView fx:id="authorList" VBox.vgrow="ALWAYS"/>
+                    <HBox spacing="12" VBox.vgrow="ALWAYS">
+                        <ListView fx:id="authorList" HBox.hgrow="ALWAYS"/>
+                        <VBox spacing="6" prefWidth="280">
+                            <Label text="Variant headings (see-from)"/>
+                            <ListView fx:id="authorVariantList" VBox.vgrow="ALWAYS"/>
+                            <HBox spacing="6">
+                                <TextField fx:id="authorVariantField" promptText="Variant form" HBox.hgrow="ALWAYS"/>
+                                <Button text="Add" onAction="#onAddAuthorVariant"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
                 </VBox>
             </Tab>
             <Tab text="Publishers">
@@ -54,10 +65,20 @@
                 <VBox spacing="8">
                     <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
                     <HBox spacing="8">
-                        <TextField fx:id="subjectField" promptText="Subject heading"/>
+                        <TextField fx:id="subjectField" promptText="Subject heading (authorized form)"/>
                         <Button text="Add subject" onAction="#onAddSubject" styleClass="primary-button"/>
                     </HBox>
-                    <ListView fx:id="subjectList" VBox.vgrow="ALWAYS"/>
+                    <HBox spacing="12" VBox.vgrow="ALWAYS">
+                        <ListView fx:id="subjectList" HBox.hgrow="ALWAYS"/>
+                        <VBox spacing="6" prefWidth="280">
+                            <Label text="Variant headings (see-from)"/>
+                            <ListView fx:id="subjectVariantList" VBox.vgrow="ALWAYS"/>
+                            <HBox spacing="6">
+                                <TextField fx:id="subjectVariantField" promptText="Variant form" HBox.hgrow="ALWAYS"/>
+                                <Button text="Add" onAction="#onAddSubjectVariant"/>
+                            </HBox>
+                        </VBox>
+                    </HBox>
                 </VBox>
             </Tab>
         </tabs>
