@@ -2,8 +2,10 @@ package com.justin.libradesk.controller;
 
 import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.model.Author;
+import com.justin.libradesk.domain.model.Branch;
 import com.justin.libradesk.domain.model.Category;
 import com.justin.libradesk.domain.model.Publisher;
+import com.justin.libradesk.domain.model.ShelfLocation;
 import com.justin.libradesk.domain.model.Subject;
 import com.justin.libradesk.domain.service.CatalogService;
 import com.justin.libradesk.dto.AuthoritySuggestion;
@@ -53,6 +55,16 @@ public class ReferenceDataController {
     private ListView<String> subjectVariantList;
     @FXML
     private TextField subjectVariantField;
+    @FXML
+    private TextField branchCodeField;
+    @FXML
+    private TextField branchNameField;
+    @FXML
+    private ListView<Branch> branchList;
+    @FXML
+    private TextField locationNameField;
+    @FXML
+    private ListView<ShelfLocation> locationList;
 
     @FXML
     private void initialize() {
@@ -74,7 +86,55 @@ public class ReferenceDataController {
                 .addListener((obs, old, selected) -> refreshAuthorVariants(selected));
         subjectList.getSelectionModel().selectedItemProperty()
                 .addListener((obs, old, selected) -> refreshSubjectVariants(selected));
+        branchList.setCellFactory(l -> new ListCell<>() {
+            @Override
+            protected void updateItem(Branch branch, boolean empty) {
+                super.updateItem(branch, empty);
+                setText(empty || branch == null ? null : branch.code() + " — " + branch.name());
+            }
+        });
+        locationList.setCellFactory(l -> new ListCell<>() {
+            @Override
+            protected void updateItem(ShelfLocation location, boolean empty) {
+                super.updateItem(location, empty);
+                setText(empty || location == null ? null : location.name());
+            }
+        });
+        branchList.getSelectionModel().selectedItemProperty()
+                .addListener((obs, old, selected) -> refreshLocations(selected));
         refresh();
+    }
+
+    @FXML
+    private void onAddBranch() {
+        add(branchNameField, () -> {
+            AppContext.get().locationService()
+                    .addBranch(branchCodeField.getText(), branchNameField.getText(), actor());
+            branchCodeField.clear();
+        });
+    }
+
+    @FXML
+    private void onAddLocation() {
+        Branch branch = branchList.getSelectionModel().getSelectedItem();
+        if (branch == null) {
+            Dialogs.error("Select a branch first.");
+            return;
+        }
+        try {
+            AppContext.get().locationService()
+                    .addLocation(branch.id(), locationNameField.getText(), actor());
+            locationNameField.clear();
+            refreshLocations(branch);
+        } catch (RuntimeException e) {
+            Dialogs.error(e.getMessage());
+        }
+    }
+
+    private void refreshLocations(Branch branch) {
+        locationList.setItems(branch == null ? FXCollections.observableArrayList()
+                : FXCollections.observableArrayList(
+                        AppContext.get().locationService().listLocations(branch.id())));
     }
 
     @FXML
@@ -266,6 +326,8 @@ public class ReferenceDataController {
                 catalog.listPublishers().stream().map(Publisher::name).toList()));
         categoryList.setItems(FXCollections.observableArrayList(
                 catalog.listCategories().stream().map(Category::name).toList()));
+        branchList.setItems(FXCollections.observableArrayList(
+                AppContext.get().locationService().listBranches()));
     }
 
     private void refreshAuthorVariants(Author author) {

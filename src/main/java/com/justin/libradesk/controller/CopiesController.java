@@ -4,6 +4,7 @@ import com.justin.libradesk.config.AppContext;
 import com.justin.libradesk.domain.enumtype.CopyStatus;
 import com.justin.libradesk.domain.model.Book;
 import com.justin.libradesk.domain.model.BookCopy;
+import com.justin.libradesk.domain.model.ShelfLocation;
 import com.justin.libradesk.dto.SpineLabel;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
@@ -16,7 +17,9 @@ import javafx.stage.FileChooser;
 import javafx.util.StringConverter;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Book copy management: pick a book, list its copies, add new copies, and
@@ -33,6 +36,8 @@ public class CopiesController {
     @FXML
     private ComboBox<CopyStatus> statusCombo;
     @FXML
+    private ComboBox<ShelfLocation> locationCombo;
+    @FXML
     private TableView<BookCopy> copyTable;
     @FXML
     private TableColumn<BookCopy, String> barcodeColumn;
@@ -40,6 +45,10 @@ public class CopiesController {
     private TableColumn<BookCopy, String> statusColumn;
     @FXML
     private TableColumn<BookCopy, String> shelfColumn;
+    @FXML
+    private TableColumn<BookCopy, String> locationColumn;
+
+    private final Map<Long, String> locationNames = new HashMap<>();
 
     @FXML
     private void initialize() {
@@ -54,13 +63,37 @@ public class CopiesController {
                 return null;
             }
         });
+        locationCombo.setConverter(new StringConverter<>() {
+            @Override
+            public String toString(ShelfLocation location) {
+                return location == null ? "" : location.name();
+            }
+
+            @Override
+            public ShelfLocation fromString(String string) {
+                return null;
+            }
+        });
         bookCombo.valueProperty().addListener((obs, old, selected) -> refreshCopies());
         statusCombo.setItems(FXCollections.observableArrayList(CopyStatus.values()));
+        loadLocations();
         barcodeColumn.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getBarcode()));
         statusColumn.setCellValueFactory(c -> new SimpleStringProperty(c.getValue().getStatus().name()));
         shelfColumn.setCellValueFactory(c -> new SimpleStringProperty(
                 c.getValue().getShelfLocation() == null ? "-" : c.getValue().getShelfLocation()));
+        locationColumn.setCellValueFactory(c -> new SimpleStringProperty(
+                c.getValue().getLocationId() == null ? "-"
+                        : locationNames.getOrDefault(c.getValue().getLocationId(), "-")));
         onReloadBooks();
+    }
+
+    private void loadLocations() {
+        List<ShelfLocation> locations = AppContext.get().locationService().listLocations();
+        locationCombo.setItems(FXCollections.observableArrayList(locations));
+        locationNames.clear();
+        for (ShelfLocation location : locations) {
+            locationNames.put(location.id(), location.name());
+        }
     }
 
     @FXML
@@ -79,10 +112,13 @@ public class CopiesController {
         copy.setBookId(book.getId());
         copy.setBarcode(text(barcodeField));
         copy.setShelfLocation(text(shelfField));
+        ShelfLocation location = locationCombo.getValue();
+        copy.setLocationId(location == null ? null : location.id());
         try {
             AppContext.get().catalogService().addCopy(copy, actor());
             barcodeField.clear();
             shelfField.clear();
+            locationCombo.setValue(null);
             refreshCopies();
         } catch (RuntimeException e) {
             Dialogs.error(e.getMessage());

@@ -27,6 +27,7 @@
     <HBox spacing="8">
         <TextField fx:id="barcodeField" promptText="Barcode"/>
         <TextField fx:id="shelfField" promptText="Shelf location"/>
+        <ComboBox fx:id="locationCombo" promptText="Branch location"/>
         <Button text="Add copy" onAction="#onAddCopy" styleClass="primary-button"/>
     </HBox>
 
@@ -35,6 +36,7 @@
             <TableColumn fx:id="barcodeColumn" text="Barcode" prefWidth="160"/>
             <TableColumn fx:id="statusColumn" text="Status" prefWidth="120"/>
             <TableColumn fx:id="shelfColumn" text="Shelf" prefWidth="120"/>
+            <TableColumn fx:id="locationColumn" text="Location" prefWidth="140"/>
         </columns>
     </TableView>
 

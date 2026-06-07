@@ -93,6 +93,28 @@
                     </HBox>
                 </VBox>
             </Tab>
+            <Tab text="Branches &amp; Locations">
+                <HBox spacing="12">
+                    <padding><Insets top="10" right="10" bottom="10" left="10"/></padding>
+                    <VBox spacing="8" HBox.hgrow="ALWAYS">
+                        <Label text="Branches"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="branchCodeField" promptText="Code"/>
+                            <TextField fx:id="branchNameField" promptText="Branch name" HBox.hgrow="ALWAYS"/>
+                            <Button text="Add branch" onAction="#onAddBranch" styleClass="primary-button"/>
+                        </HBox>
+                        <ListView fx:id="branchList" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                    <VBox spacing="8" prefWidth="320">
+                        <Label text="Locations in selected branch"/>
+                        <HBox spacing="8">
+                            <TextField fx:id="locationNameField" promptText="Location name" HBox.hgrow="ALWAYS"/>
+                            <Button text="Add location" onAction="#onAddLocation"/>
+                        </HBox>
+                        <ListView fx:id="locationList" VBox.vgrow="ALWAYS"/>
+                    </VBox>
+                </HBox>
+            </Tab>
         </tabs>
     </TabPane>
 </VBox>

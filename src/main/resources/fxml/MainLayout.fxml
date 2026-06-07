@@ -21,7 +21,10 @@
             <Button fx:id="patronsButton"     text="Patrons"      onAction="#onPatrons"/>
             <Button text="Circulation"  onAction="#onCirculation"/>
             <Button text="Reservations" onAction="#onReservations"/>
+            <Button text="Patron Account" onAction="#onPatronAccount"/>
             <Button fx:id="finesButton"    text="Fines"     onAction="#onFines"/>
+            <Button fx:id="circPolicyButton" text="Circ Policies" onAction="#onCircPolicy"/>
+            <Button fx:id="calendarButton"   text="Calendar"      onAction="#onCalendar"/>
             <Button fx:id="reportsButton"  text="Reports"   onAction="#onReports"/>
             <Button fx:id="usersButton"    text="Users"     onAction="#onUsers"/>
             <Button fx:id="auditButton"    text="Audit"     onAction="#onAudit"/>

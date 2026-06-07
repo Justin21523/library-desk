@@ -36,6 +36,10 @@ public class MainLayoutController {
     @FXML
     private Button finesButton;
     @FXML
+    private Button circPolicyButton;
+    @FXML
+    private Button calendarButton;
+    @FXML
     private Button reportsButton;
     @FXML
     private Button usersButton;
@@ -61,6 +65,8 @@ public class MainLayoutController {
         gate(copiesButton, Permission.CATALOG);
         gate(patronsButton, Permission.PATRONS);
         gate(finesButton, Permission.FINES);
+        gate(circPolicyButton, Permission.SETTINGS);
+        gate(calendarButton, Permission.SETTINGS);
         gate(reportsButton, Permission.REPORTS);
         gate(usersButton, Permission.USERS);
         gate(auditButton, Permission.AUDIT);
@@ -114,8 +120,23 @@ public class MainLayoutController {
     }
 
     @FXML
+    private void onPatronAccount() {
+        load("/fxml/PatronAccountView.fxml");
+    }
+
+    @FXML
     private void onFines() {
         load("/fxml/FinesView.fxml");
+    }
+
+    @FXML
+    private void onCircPolicy() {
+        load("/fxml/CircPolicyView.fxml");
+    }
+
+    @FXML
+    private void onCalendar() {
+        load("/fxml/CalendarView.fxml");
     }
 
     @FXML

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justin.libradesk.controller.CircPolicyController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Circulation Policies" styleClass="app-title"/>
+    <Label wrapText="true"
+           text="Loan rules by patron type and material type. A row with material type &quot;(default)&quot; applies to all material types for that patron type; an exact material match overrides it. Select a row to edit it."/>
+
+    <TableView fx:id="policyTable" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="patronColumn" text="Patron" prefWidth="90"/>
+            <TableColumn fx:id="materialColumn" text="Material" prefWidth="100"/>
+            <TableColumn fx:id="loanDaysColumn" text="Loan days" prefWidth="80"/>
+            <TableColumn fx:id="maxLoansColumn" text="Max loans" prefWidth="80"/>
+            <TableColumn fx:id="renewalColumn" text="Renewals" prefWidth="80"/>
+            <TableColumn fx:id="holdsColumn" text="Max holds" prefWidth="80"/>
+            <TableColumn fx:id="finePerDayColumn" text="Fine/day" prefWidth="80"/>
+            <TableColumn fx:id="fineCapColumn" text="Fine cap" prefWidth="80"/>
+            <TableColumn fx:id="graceColumn" text="Grace" prefWidth="60"/>
+        </columns>
+    </TableView>
+
+    <HBox spacing="8">
+        <ComboBox fx:id="patronCombo" promptText="Patron type"/>
+        <ComboBox fx:id="materialCombo" promptText="Material type"/>
+        <TextField fx:id="loanDaysField" promptText="Loan days" prefWidth="80"/>
+        <TextField fx:id="maxLoansField" promptText="Max loans" prefWidth="80"/>
+        <TextField fx:id="renewalField" promptText="Renewals" prefWidth="80"/>
+    </HBox>
+    <HBox spacing="8">
+        <TextField fx:id="holdsField" promptText="Max holds" prefWidth="80"/>
+        <TextField fx:id="finePerDayField" promptText="Fine/day" prefWidth="80"/>
+        <TextField fx:id="fineCapField" promptText="Fine cap (0=none)" prefWidth="120"/>
+        <TextField fx:id="graceField" promptText="Grace days" prefWidth="90"/>
+    </HBox>
+    <HBox spacing="8">
+        <Button text="Save" onAction="#onSave" styleClass="primary-button"/>
+        <Button text="New" onAction="#onClear"/>
+        <Button text="Delete selected" onAction="#onDelete"/>
+        <Button text="Refresh" onAction="#onRefresh"/>
+    </HBox>
+</VBox>

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox spacing="12" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.justin.libradesk.controller.PatronAccountController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Patron Account" styleClass="app-title"/>
+
+    <HBox spacing="8">
+        <Label text="Patron:"/>
+        <ComboBox fx:id="patronCombo" prefWidth="280"/>
+        <Button text="Load" onAction="#onLoad" styleClass="primary-button"/>
+        <Button text="Refresh" onAction="#onRefresh"/>
+    </HBox>
+
+    <Label fx:id="blocksLabel" wrapText="true"/>
+    <Label fx:id="balanceLabel"/>
+
+    <Label text="Outstanding loans"/>
+    <TableView fx:id="loanTable" prefHeight="160">
+        <columns>
+            <TableColumn fx:id="loanIdColumn" text="Loan" prefWidth="60"/>
+            <TableColumn fx:id="loanCopyColumn" text="Copy" prefWidth="70"/>
+            <TableColumn fx:id="loanDueColumn" text="Due" prefWidth="160"/>
+            <TableColumn fx:id="loanStatusColumn" text="Status" prefWidth="90"/>
+            <TableColumn fx:id="loanRenewalsColumn" text="Renewals" prefWidth="80"/>
+        </columns>
+    </TableView>
+    <HBox spacing="8">
+        <Button text="Mark lost" onAction="#onMarkLost"/>
+        <Button text="Mark damaged" onAction="#onMarkDamaged"/>
+    </HBox>
+
+    <Label text="Active holds"/>
+    <TableView fx:id="holdTable" prefHeight="120">
+        <columns>
+            <TableColumn fx:id="holdBookColumn" text="Book" prefWidth="70"/>
+            <TableColumn fx:id="holdStatusColumn" text="Status" prefWidth="90"/>
+            <TableColumn fx:id="holdPositionColumn" text="Position" prefWidth="80"/>
+        </columns>
+    </TableView>
+
+    <Label text="Unpaid fines"/>
+    <TableView fx:id="fineTable" prefHeight="140">
+        <columns>
+            <TableColumn fx:id="fineIdColumn" text="Fine" prefWidth="60"/>
+            <TableColumn fx:id="fineTypeColumn" text="Type" prefWidth="110"/>
+            <TableColumn fx:id="fineAmountColumn" text="Amount" prefWidth="90"/>
+            <TableColumn fx:id="fineBalanceColumn" text="Balance" prefWidth="90"/>
+            <TableColumn fx:id="fineStatusColumn" text="Status" prefWidth="80"/>
+        </columns>
+    </TableView>
+    <HBox spacing="8">
+        <Button text="Pay" onAction="#onPay" styleClass="primary-button"/>
+        <Button text="Waive" onAction="#onWaive"/>
+    </HBox>
+</VBox>
