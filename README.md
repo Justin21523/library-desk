@@ -1,191 +1,81 @@
-# LibraDesk — Library Information Management System
+# LibraDesk
 
-LibraDesk is a desktop library management system built as a portfolio and
-learning project. It demonstrates clean layered architecture, JavaFX UI
-development, relational database design, enforceable business rules, and unit
-testing in a realistic — but intentionally not over-engineered — codebase.
+LibraDesk is a comprehensive, desktop-based Library Information Management System (ILS) built with Java and JavaFX. It is designed to handle everything from basic circulation and cataloging to professional bibliographic management using MARC21, authority control, and interoperability protocols.
 
-> **Status:** Phase 17 (bibliographic structure + interoperability) — the planned
-> roadmap (Phases 1–17) is complete. On top of circulation policy & billing (16),
-> this final phase adds **bibliographic structure** (FRBR work grouping, MFHD
-> holdings, a serials module with issue check-in/claiming, and 856 e-resource links
-> with link checking), a standards-based **interoperability server** — read-only
-> **REST** (JSON), **OAI-PMH** (MARCXML/Dublin Core harvesting), and **SRU**
-> (MARCXML search) over the JDK HTTP server, off by default and config-gated — a
-> generalized **background job framework** (run on demand from a Jobs screen), and
-> **internationalization** (Traditional Chinese, English default).
+## Features
 
-## Tech stack
+### Core Library Operations
+- **Circulation Management**: Checkout, check-in, renewals, and holds.
+- **Patron Management**: Detailed patron accounts, membership levels, and automated blocks (for fines or overdues).
+- **Fine Management**: Typed charges (Overdue, Lost, Damaged), partial payments, and waive functionality.
+- **Reservation System**: Manage item holds with automated expiry for uncollected items.
+- **Notices**: Automated due-soon, overdue, and hold-ready notifications via email.
 
-- **Java 21**, **JavaFX 21** (FXML + CSS)
-- **Maven** build
-- **PostgreSQL** via **JDBC** with the **Repository Pattern**, pooled by **HikariCP**
-- **JUnit 5** + **Mockito** for tests
-- **SLF4J + Logback** for logging
-- **Jackson** (settings/config) and **Apache Commons CSV** (import/export, later phase)
+### Advanced Cataloging
+- **MARC21 Support**: Full field-level MARC editor with `marc_xml` as the source of truth.
+- **Copy Cataloging**: Import records directly from the Library of Congress via SRU.
+- **Authority Control**: Manage authors and subjects with see-from variants, rename/merge capabilities, and id.loc.gov lookup.
+- **Classification**: Support for DDC and LCC schemes with shelf-order key generation.
+- **OPAC Search**: Keyword-based search with faceted navigation (author, subject, year, language, material).
+- **Bib Structure**: Support for FRBR works, MFHD holdings, and serials subscriptions with automated issue prediction and claiming.
+
+### Administrative & Technical
+- **RBAC (Role-Based Access Control)**: Gated access for Librarians and Admins.
+- **Audit Logging**: Comprehensive tracking of all sensitive actions.
+- **Reporting**: Visual charts (Bar/Line) and exportable reports in PDF and CSV.
+- **Background Jobs**: A generalized job framework for maintenance tasks like overdue sweeps and notice sending.
+- **Interoperability**: Built-in server supporting REST (JSON), OAI-PMH, and SRU protocols.
+- **i18n**: Multi-language support (English default, Traditional Chinese).
+
+## Tech Stack
+- **Java 21**: Leveraging the latest LTS features.
+- **JavaFX 21**: Modern desktop UI.
+- **PostgreSQL**: Robust relational data storage.
+- **Flyway**: Automated database migrations.
+- **Maven**: Dependency management and build automation.
+- **Testcontainers**: Integration testing with real Docker-based PostgreSQL.
+- **Libraries**: HikariCP (pooling), Jackson (JSON), Apache Commons CSV, OpenPDF (PDF export), MARC4J (MARC21 parsing).
 
 ## Architecture
 
-A strict top-down layered architecture; dependencies only point downward and the
-UI never touches the database directly:
+The project follows a strict top-down layered architecture:
+`JavaFX (FXML/CSS) → Controller → Service (Domain Logic) → Repository (JDBC) → Domain Model`
 
-```
-JavaFX UI (FXML + CSS)
-      │
-Controller  ── coordinates UI events only; no business logic
-      │
-Service     ── business rules, workflows, audit (domain.service)
-      │
-Repository  ── interfaces + JDBC implementations (the only SQL)
-      │
-Domain model + enums
-```
+- **Composition Root**: `AppContext` manages service and repository instantiation.
+- **Persistence**: SQL-based repositories with conversion to domain objects.
+- **Validation**: Service-layer validation with custom exceptions surfaced to the UI.
+- **Time Management**: Injected `java.time.Clock` for deterministic testing.
 
-Cross-cutting concerns live in dedicated packages: `infrastructure` (database,
-export, logging), `validation`, `config`, and `util`.
+## Getting Started
 
-Key points:
-
-- **Business logic stays out of controllers.** Controllers call services.
-- **The core borrowing rule is a pure function** (`BorrowingPolicy`) so it is
-  trivially unit-testable; `CirculationService` orchestrates it with mocked
-  repositories in tests.
-- **`AppContext`** is the composition root that wires the object graph and holds
-  the signed-in user (the session).
-
-### Package layout
-
-```
-com.justin.libradesk
-├── config            AppConfig, AppContext (composition root)
-├── controller        JavaFX controllers + ViewNavigator
-├── domain
-│   ├── model         entities (Book, BookCopy, Patron, Loan, ...)
-│   ├── enumtype      status/role enums
-│   └── service       business services + BorrowingPolicy
-├── dto               UI-facing data carriers
-├── repository        repository interfaces
-│   └── jdbc          JDBC implementations
-├── validation        field validation + ValidationException
-├── infrastructure
-│   └── database      DatabaseManager, SchemaInitializer
-└── util              PasswordHasher
-```
-
-## Prerequisites
-
-- JDK 21
+### Prerequisites
+- JDK 21+
+- PostgreSQL 16+
 - Maven 3.9+
-- A running PostgreSQL 14+ instance
+- Docker (optional, for running integration tests)
 
-## Database setup
+### Database Setup
+1. Create a PostgreSQL database named `libradesk`:
+   ```bash
+   createdb libradesk
+   ```
+2. Update `src/main/resources/application.properties` with your database credentials (or use environment variables like `DB_PASSWORD`).
 
-Create the database and a user; the app applies the schema on first run via
-Flyway migrations (`src/main/resources/db/migration`):
-
-```bash
-createdb libradesk
-psql -c "CREATE USER libradesk WITH PASSWORD 'libradesk';"
-psql -c "GRANT ALL PRIVILEGES ON DATABASE libradesk TO libradesk;"
-```
-
-Connection settings live in `src/main/resources/application.properties`. Any key
-can be overridden by an environment variable in `UPPER_SNAKE_CASE`, e.g.:
-
-```bash
-export DB_URL="jdbc:postgresql://localhost:5432/libradesk"
-export DB_USER="libradesk"
-export DB_PASSWORD="<secret>"
-```
-
-## Run
-
+### Running the Application
 ```bash
 mvn javafx:run
 ```
+Default login: `admin` / `admin` (You will be prompted to change your password on first login).
 
-On first launch the app seeds a default administrator account:
+### Testing
+- **Unit Tests**: `mvn test`
+- **Integration Tests**: `mvn verify -Pit` (Requires Docker)
 
-| Username | Password |
-| -------- | -------- |
-| `admin`  | `admin`  |
-
-This account is flagged to require a password change on first login, so you will
-be prompted to set a new password before reaching the main screen.
-
-To populate a fresh database with sample data for evaluation, run with
-`DEMO_SEED=true` (it only seeds when the catalog is empty):
-
-```bash
-DEMO_SEED=true mvn javafx:run
-```
-
-## Test
-
-```bash
-mvn test                                   # unit tests only (no database/Docker)
-mvn -Dtest=BorrowingPolicyTest test        # a single test class
-mvn -Dtest=CirculationServiceTest#checkoutRejectsSuspendedPatron test
-```
-
-The unit tests (`BorrowingPolicyTest`, `CirculationServiceTest`) cover the
-borrowing rule and the check-out/check-in workflows with mocked repositories, so
-they need neither a database nor Docker.
-
-### Integration tests
-
-The JDBC repositories are verified against a real PostgreSQL started by
-[Testcontainers](https://java.testcontainers.org/). They run only under the
-`it` profile and **require Docker**:
-
-```bash
-mvn verify -Pit                            # unit tests + repository integration tests
-```
-
-> Note: the integration base class pins the Docker client API version
-> (`api.version=1.41`) because the bundled docker-java client otherwise
-> negotiates an API version that newer daemons (minimum 1.40) reject.
-
-The integration suite also includes a **GUI smoke test** (`ui/FxmlSmokeIT`) that
-loads every FXML view against a wired application context, catching `fx:id`/handler
-mismatches. It needs a display to start the JavaFX toolkit, so it self-skips when
-`DISPLAY` is unset (e.g. headless CI) and runs where a display is present.
-
-The **Library of Congress SRU** client has an offline test (recorded fixture) plus a
-live test that is disabled unless `LOC_LIVE=true`:
-
-```bash
-LOC_LIVE=true mvn -Dtest=LocSruLiveTest test   # hits the real LoC service
-```
-
-## Packaging
-
-Build a self-contained native application image (a slim jlink runtime + the app)
-with:
-
+## Deployment
+Build a native application image using jlink and jpackage:
 ```bash
 ./scripts/package.sh
-# launch: target/jpackage/image/LibraDesk/bin/LibraDesk
 ```
 
-The script builds the jar, collects runtime dependencies, creates a trimmed JDK
-runtime with `jlink`, and assembles the image with `jpackage` (`--type
-app-image`). JavaFX and the other libraries run from the classpath, so the
-packaged app uses `com.justin.libradesk.Launcher` as its entry point (a launcher
-that does not extend `Application`). Requires JDK 21 with `jlink`/`jpackage` on
-the `PATH`. When `dpkg-deb` and `fakeroot` are present, the script also builds a
-`.deb` installer into `target/jpackage/installer/`.
-
-## Continuous integration
-
-`.github/workflows/ci.yml` runs `mvn verify -Pit` on every push/PR
-(ubuntu-latest, JDK 21, Maven cache). The runner's preinstalled Docker lets the
-Testcontainers integration tests run unchanged.
-
-> The jlink module list in the script covers the app's needs (JavaFX, JDBC,
-> logging, BCrypt). If you enable TLS to PostgreSQL or other JDK features, run
-> `jdeps` against the dependencies and extend `--add-modules` accordingly.
-
 ## License
-
-Provided as-is for learning and portfolio purposes.
+[Insert License Here]
